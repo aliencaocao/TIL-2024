@@ -1,0 +1,22 @@
+# Note: must install torch 1.12.1+cu118 BEFORE running pip install -r requirements.txt
+# because detectron2 depends on it
+# and Git packages are installed first for some fucking reason
+
+# --index-url https://download.pytorch.org/whl/cu118
+# torch==1.12.1
+
+torchvision
+transformers==4.32.1
+cython
+opencv-python
+scipy
+einops
+lvis
+fairscale
+
+git+https://github.com/facebookresearch/detectron2@017abbf
+git+https://github.com/IDEA-Research/detrex@776058e
+git+https://github.com/openai/CLIP.git@d50d76d
+
+# Custom dependencies below
+xformers
