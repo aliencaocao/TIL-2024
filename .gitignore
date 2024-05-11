@@ -1,4 +1,10 @@
-models/
+# Models
+*.bin
+*.pth
+*.pt
+
+# PyCharm stuff
+.idea
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
