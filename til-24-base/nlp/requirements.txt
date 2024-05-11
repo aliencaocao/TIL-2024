@@ -1,5 +1,5 @@
 protobuf==3.20.3
-transformers==4.31.0
+transformers==4.38.0
 einops==0.6.1
 xformers
 accelerate==0.20.3
