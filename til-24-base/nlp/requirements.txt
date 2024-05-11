@@ -4,7 +4,7 @@ einops==0.6.1
 xformers
 accelerate==0.20.3
 kor==0.12.0
-langchain==0.0.225
+langchain==0.1.0
 bitsandbytes==0.39.0
 sentencepiece==0.1.99
 loralib
