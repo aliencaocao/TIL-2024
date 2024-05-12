@@ -2,7 +2,8 @@
 *.bin
 *.pth
 *.pt
-data
+data/*
+!data/placeholder
 exllamav2
 nlp/src/models/*
 
