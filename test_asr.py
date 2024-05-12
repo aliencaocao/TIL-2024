@@ -46,7 +46,7 @@ def main():
 
 
 def run_batched(
-    instances: List[Dict[str, str | int]], batch_size: int = 64
+    instances: List[Dict[str, str | int]], batch_size: int = 4
 ) -> List[Dict[str, str | int]]:
     # split into batches
     results = []
