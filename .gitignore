@@ -2,6 +2,9 @@
 *.bin
 *.pth
 *.pt
+data
+exllamav2
+nlp/src/models/*
 
 # PyCharm stuff
 .idea
