@@ -23,3 +23,48 @@ Example JSON:
   "tool": "surface-to-air missiles"
 }
 ```
+
+# ExLlamaV2
+1. Build wheel on Linux and T4 (same as docker runtime)
+```shell
+git clone https://github.com/turboderp/exllamav2
+cd exllamav2
+python setup.py bdist_wheel
+```
+If need to rebuild, delete the build folder then run build
+2. Pretrained mode calibrated on default set download:
+```shell
+huggingface-cli download LoneStriker/gorilla-openfunctions-v2-5.0bpw-h6-exl2 --local-dir gorilla-openfunctions-v2-5.0bpw-h6-exl2 --local-dir-use-symlinks False
+```
+
+
+
+# Evaluations
+## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on full train set
+Remove duplicate but retry without removing if model cannot find one or more information. If retrying even though nothing has been removed (no 'repeat' in prompt), then remove the prompt that ask it to give None if not found to allow it to hallucinate (cook).
+
+Using weapon instead of tool
+- NLP mean score: 0.9679137333565905
+- NLP detailed score: {'heading': 0.9968571428571429, 'target': 0.9515214959643531, 'tool': 0.9553625612482756}
+
+Using tool instead of weapon
+- NLP mean score: 0.9688114958493109
+- NLP detailed score: {'heading': 0.9965714285714286, 'target': 0.9436904728324896, 'tool': 0.9661725861440147}
+
+Conclusion: Using tool instead of weapon is better, all below result use tool.
+
+With top_p = 0.9
+- NLP mean score: 0.9685219499454794
+- NLP detailed score: {'heading': 0.9965714285714286, 'target': 0.9433206141197737, 'tool': 0.9656738071452358}
+
+Conclusion: dont use top_p is better, all below result do not specify top_p.
+
+With regex weapon detection (**not** representative as overfitted to train set)
+- NLP mean score: 0.9892643084428798
+- NLP detailed score: {'heading': 0.9942857142857143, 'target': 0.9740786396143539, 'tool': 0.9994285714285714}
+
+## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on test set
+
+## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set + train set, eval on full train set
+
+## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set + train set, eval on test set
