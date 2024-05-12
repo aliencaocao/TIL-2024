@@ -2,6 +2,10 @@
 *.bin
 *.pth
 *.pt
+data/*
+!data/placeholder
+exllamav2
+nlp/src/models/*
 
 # PyCharm stuff
 .idea
