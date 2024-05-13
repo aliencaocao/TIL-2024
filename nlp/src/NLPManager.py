@@ -150,7 +150,7 @@ if __name__ == "__main__":
     import json
     from tqdm import tqdm
 
-    nlp_manager = NLPManager("models\gorilla-openfunctions-v2-5.0bpw-h6-exl2")
+    nlp_manager = NLPManager("models/gorilla-openfunctions-v2-5.0bpw-h6-exl2")
     # result = nlp_manager.qa(['Activate electromagnetic pulse, heading one five five, engage red and purple helicopter.'])
     # print(result)
     # exit()

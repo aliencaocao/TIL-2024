@@ -6,6 +6,7 @@ data/*
 !data/placeholder
 exllamav2
 nlp/src/models/*
+*.whl
 
 # PyCharm stuff
 .idea

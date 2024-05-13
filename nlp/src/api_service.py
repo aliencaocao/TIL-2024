@@ -4,7 +4,7 @@ from NLPManager import NLPManager
 
 app = FastAPI()
 
-nlp_manager = NLPManager()
+nlp_manager = NLPManager('models/gorilla-openfunctions-v2-5.0bpw-h6-exl2')
 
 
 @app.get("/health")

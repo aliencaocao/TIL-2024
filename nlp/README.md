@@ -24,19 +24,41 @@ Example JSON:
 }
 ```
 
+Function definition:
+```python
+self.give_none_if_not_specified_string = ' Give None if not specified.'
+functions = [
+            {
+                "name": "control_turret",
+                "description": "Control the turret by giving it heading, tool to use and target description",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "heading": {"type": "string", "description": f"Heading of target in three arabic numerals and multiples of five (005 to 360).{self.give_none_if_not_specified_string}"},
+                        "tool": {"type": "string", "description": f"Tool to use/deploy.{self.give_none_if_not_specified_string}"},
+                        "target": {"type": "string", "description": f"Description of the target/enemy, exclude any quantifiers like 'the' or 'a'.{self.give_none_if_not_specified_string}"}
+                    },
+                    "required": ["heading", "tool", "target"],
+                },
+            }
+        ]
+```
+
 # ExLlamaV2
-1. Build wheel on Linux and T4 (same as docker runtime)
+1. [Download](https://drive.google.com/file/d/1VLaP60DxsysOVPCQGFHGR8AR67hzhML6/view) OR Build wheel on Linux and T4 (same as docker runtime)
 ```shell
 git clone https://github.com/turboderp/exllamav2
 cd exllamav2
 python setup.py bdist_wheel
 ```
 If need to rebuild, delete the build folder then run build
-2. Pretrained mode calibrated on default set download:
-```shell
-huggingface-cli download LoneStriker/gorilla-openfunctions-v2-5.0bpw-h6-exl2 --local-dir gorilla-openfunctions-v2-5.0bpw-h6-exl2 --local-dir-use-symlinks False
-```
 
+Make sure wheel is in nlp/
+2. Download model:
+```shell
+# pretrained mode calibrated on default set
+huggingface-cli download LoneStriker/gorilla-openfunctions-v2-5.0bpw-h6-exl2 --local-dir models/gorilla-openfunctions-v2-5.0bpw-h6-exl2 --local-dir-use-symlinks False
+```
 
 
 # Evaluations

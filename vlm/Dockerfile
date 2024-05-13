@@ -1,7 +1,9 @@
-# example deep learning VM
-# for a full list see us-docker.pkg.dev/deeplearning-platform-release/gcr.io/
-# and for details see https://cloud.google.com/deep-learning-vm/docs/images#supported-frameworks
-FROM us-docker.pkg.dev/deeplearning-platform-release/gcr.io/pytorch-gpu.2-2.py310
+FROM ubuntu:22.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN echo "verbose = off" > ~/.wgetrc
+
+# override the US mirrors as they are too slow
+COPY sources.list /etc/apt/sources.list
 
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -13,7 +15,11 @@ ENV PYTHONUNBUFFERED 1
 # set this flag to just ignore the warning
 ENV PIP_ROOT_USER_ACTION=ignore
 
-RUN pip install -U pip
+RUN apt-get -qq update >/dev/null 2>&1 && \
+    apt-get -qq upgrade -y >/dev/null 2>&1 && \
+    apt-get install -qqy wget >/dev/null 2>&1
+
+RUN pip install -U pip setuptools wheel
 WORKDIR /workspace
 
 # install other requirements
@@ -22,6 +28,12 @@ RUN pip install -r requirements.txt
 
 # copy the rest of the files into the container
 COPY src .
+
+
+RUN pip cache purge
+RUN apt-get clean autoclean
+RUN apt-get autoremove --yes
+RUN rm -rf /var/lib/{apt,dpkg,cache,log}/
 
 # start model service
 CMD uvicorn api_service:app --port 5004 --host 0.0.0.0
