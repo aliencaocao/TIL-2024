@@ -17,7 +17,7 @@ ENV PIP_ROOT_USER_ACTION=ignore
 
 RUN apt-get -qq update >/dev/null 2>&1 && \
     apt-get -qq upgrade -y >/dev/null 2>&1 && \
-    apt-get install -qqy wget >/dev/null 2>&1
+    apt-get install -qqy python3 python3-distutils python3-dev python3-pip >/dev/null 2>&1
 
 RUN pip install -U pip setuptools wheel
 WORKDIR /workspace

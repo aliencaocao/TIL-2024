@@ -66,7 +66,7 @@ Make sure wheel is in nlp/
 2. Download model:
 ```shell
 # pretrained mode calibrated on default set
-huggingface-cli download LoneStriker/gorilla-openfunctions-v2-5.0bpw-h6-exl2 --local-dir models/gorilla-openfunctions-v2-5.0bpw-h6-exl2 --local-dir-use-symlinks False
+huggingface-cli download LoneStriker/gorilla-openfunctions-v2-5.0bpw-h6-exl2 --local-dir src/models/gorilla-openfunctions-v2-5.0bpw-h6-exl2 --local-dir-use-symlinks False
 ```
 
 
