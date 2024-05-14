@@ -25,11 +25,12 @@ class control_turret(BaseModel):
 class NLPManager:
     def __init__(self, model_path: str):
         logging.info(f"Initializing NLPManager using {model_path}")
-        config = ExLlamaV2Config(model_path)
+        self.model_path = model_path
+        config = ExLlamaV2Config(self.model_path)
         temperature = 0.0
         batch_size = 4  # from eval runner
-        self.max_new_tokens = 256
-        config.max_seq_len = 768
+        self.max_new_tokens = 128
+        config.max_seq_len = 512
         config.max_batch_size = batch_size
         config.max_output_len = 1  # no need logit => just set to 1, reduce VRAM bandwidth usage a lot
         model = ExLlamaV2(config)
@@ -108,7 +109,7 @@ class NLPManager:
         logging.debug('Predicting')
         logging.debug(f'Original prompts: {context}')
         prompt, maybe_known_weapon = zip(*[self.format_prompt(c, remove_repeat=not on_retry, on_retry=on_retry) for c in context])
-        # print(len(self.tokenizer.encode(prompt, add_bos=True)[0]))
+        # print(len(self.tokenizer.encode(prompt[0], add_bos=True)[0]))
         result = self.generator.generate_simple(list(prompt), self.settings, self.max_new_tokens, add_bos=True, completion_only=True)
         for p, r, w in zip(context, result, maybe_known_weapon):
             r = r.strip()[len('<<function>>'):]

@@ -74,6 +74,10 @@ Make sure wheel is in nlp/
 # pretrained mode calibrated on default set
 huggingface-cli download LoneStriker/gorilla-openfunctions-v2-5.0bpw-h6-exl2 --local-dir src/models/gorilla-openfunctions-v2-5.0bpw-h6-exl2 --local-dir-use-symlinks False
 ```
+3. Run calibration yourself:
+```shell
+python exllamav2/convert.py -i nlp/src/models/gorilla-openfunctions-v2 -o nlp/src/models/exl2_tmp/ -cf nlp/src/models/gorilla-openfunctions-v2-5.0bpw-h6-exl2/ -b 5.0 -hb 6
+```
 
 
 # Evaluations
@@ -84,7 +88,7 @@ Using weapon instead of tool
 - NLP mean score: 0.9679137333565905
 - NLP detailed score: {'heading': 0.9968571428571429, 'target': 0.9515214959643531, 'tool': 0.9553625612482756}
 
-Using tool instead of weapon
+Using tool instead of weapon **(BEST)**
 - NLP mean score: 0.9688114958493109
 - NLP detailed score: {'heading': 0.9965714285714286, 'target': 0.9436904728324896, 'tool': 0.9661725861440147}
 
@@ -101,7 +105,19 @@ With regex weapon detection (**not** representative as overfitted to train set)
 - NLP detailed score: {'heading': 0.9942857142857143, 'target': 0.9740786396143539, 'tool': 0.9994285714285714}
 
 ## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on test set
+- NLP mean score: 0.99190173
+- Timing score 0.81024160 = 17.07min
 
 ## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set + train set, eval on full train set
+without regex weapon detection
+- NLP mean score: 0.9645239279239279
+- NLP detailed score: {'heading': 0.9991428571428571, 'target': 0.9331017744160601, 'tool': 0.9613271522128665}
 
-## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set + train set, eval on test set
+Conclusion: custom calibration is bad on OpenFunctionsV2
+
+## Pretrained Gorilla OpenFunctionsV2 EXL 4.0bit hb6 calibrated on default set, eval on full train set
+without regex weapon detection
+
+
+## Pretrained mzbac/Phi-3-mini-4k-instruct-function-calling EXL 5.0bit hb6 calibrated on default set, eval on full train set
+Cannot follow instructions.
