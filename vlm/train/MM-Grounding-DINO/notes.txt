@@ -3,3 +3,11 @@ pip install mmengine
 pip install mmcv==2.1.0 -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.1/index.html
 
 We use mmcv==2.1.0 because the latest mmdet is only compatible with mmcv>=2.0.0,<2.2.
+
+Need to download Punkt tokenizer for NLTK, otherwise validation will fail:
+```
+import nltk
+nltk.download('punkt', download_dir='/home/jupyter/nltk_data')
+nltk.download('averaged_perceptron_tagger', download_dir='/home/jupyter/nltk_data')
+```
+Can't use '~/nltk_data' because it creates a new directory in the current working directory called '~' (yes, a tilde) and puts nltk_data in there.

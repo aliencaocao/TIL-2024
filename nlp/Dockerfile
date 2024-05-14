@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM us-docker.pkg.dev/deeplearning-platform-release/gcr.io/base-cu122.py310
 ENV DEBIAN_FRONTEND=noninteractive
 RUN echo "verbose = off" > ~/.wgetrc
 
@@ -17,15 +17,15 @@ ENV PIP_ROOT_USER_ACTION=ignore
 
 RUN apt-get -qq update >/dev/null 2>&1 && \
     apt-get -qq upgrade -y >/dev/null 2>&1 && \
-    apt-get install -qqy wget >/dev/null 2>&1
+    apt-get install -qqy python3 python3-distutils python3-dev python3-pip >/dev/null 2>&1
 
 RUN pip install -U pip setuptools wheel
 WORKDIR /workspace
 
 # install other requirements
 COPY requirements.txt .
-COPY exllamav2-0.0.21-cp310-cp310-linux_x86_64.whl /exllamav2-0.0.21-cp310-cp310-linux_x86_64.whl
 RUN pip install -r requirements.txt
+COPY exllamav2-0.0.21-cp310-cp310-linux_x86_64.whl /exllamav2-0.0.21-cp310-cp310-linux_x86_64.whl
 RUN pip install /exllamav2-0.0.21-cp310-cp310-linux_x86_64.whl
 RUN rm /exllamav2-0.0.21-cp310-cp310-linux_x86_64.whl
 

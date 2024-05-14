@@ -2,4 +2,5 @@ fastapi
 uvicorn[standard]
 orjson
 pydantic >= 2.0
+tokenizers  # required by exllamav2
 # exllamav2 install from self-built wheel
