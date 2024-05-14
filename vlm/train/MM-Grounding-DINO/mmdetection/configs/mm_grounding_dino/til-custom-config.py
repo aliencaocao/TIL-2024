@@ -60,14 +60,21 @@ val_evaluator = dict(
 
 # TODO: scale LR such that LR * effective BS = constant
 # Better yet, perform gradient accumulation to fix effective BS
-optim_wrapper = dict(optimizer=dict(lr=0.0001))
+optim_wrapper = dict(
+    type='AmpOptimWrapper',
+    # only devices with compute capability >=8.0 support bfloat16
+    # T4 has compute capability 7.5
+    dtype='float16',
+    optimizer=dict(lr=0.0001),
+)
 
 max_iter = 250000
 train_cfg = dict(
     _delete_=True,
     type='IterBasedTrainLoop',
     max_iters=max_iter,
-    val_interval=13000)
+    val_interval=50,
+)
 
 param_scheduler = [
     dict(type='LinearLR', start_factor=0.1, by_epoch=False, begin=0, end=1000),
@@ -77,7 +84,8 @@ param_scheduler = [
         end=max_iter,
         by_epoch=False,
         milestones=[210000],
-        gamma=0.1)
+        gamma=0.1,
+    ),
 ]
 
 default_hooks = dict(
