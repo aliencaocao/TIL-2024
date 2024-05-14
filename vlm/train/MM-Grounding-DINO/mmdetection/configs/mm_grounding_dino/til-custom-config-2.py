@@ -33,6 +33,23 @@ train_dataloader = dict(
     )
 )
 
+test_pipeline = [
+    dict(
+        type='LoadImageFromFile', backend_args=None,
+        imdecode_backend='pillow'),
+    dict(
+        type='FixScaleResize',
+        scale=(800, 1333),
+        keep_ratio=True,
+        backend='pillow'),
+    dict(type='LoadTextAnnotations'),
+    dict(
+        type='PackDetInputs',
+        meta_keys=('img_id', 'img_path', 'ori_shape', 'img_shape',
+                   'scale_factor', 'text', 'custom_entities',
+                   'tokens_positive'))
+]
+
 val_dataloader = dict(
     batch_size=1,
     num_workers=32,
@@ -43,7 +60,7 @@ val_dataloader = dict(
         data_root=data_root,
         ann_file='annotations_val.jsonl',
         data_prefix=dict(img='val/'),
-        pipeline=_base_.test_pipeline,
+        pipeline=test_pipeline,
         return_classes=True,
     )
 )
@@ -54,15 +71,16 @@ val_evaluator = dict(
     type='DumpODVGResults',
     outfile_path=data_root + 'out.json',
     img_prefix=data_root + 'val/',
-    score_thr=0.5,
+    score_thr=0.4,
     nms_thr=0.5,
 )
+test_evaluator = val_evaluator
 
 optim_wrapper = dict(
     type='AmpOptimWrapper',
     dtype='float16',
     optimizer=dict(
-        lr=0.0001,
+        lr=1e-5,
     ),
 )
 
@@ -71,7 +89,8 @@ train_cfg = dict(
     _delete_=True,
     type='IterBasedTrainLoop',
     max_iters=max_iter,
-    val_interval=1000)
+    val_interval=1000,
+)
 
 param_scheduler = [
     dict(type='LinearLR', start_factor=0.1, by_epoch=False, begin=0, end=1000),
