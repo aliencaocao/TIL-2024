@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM us-docker.pkg.dev/deeplearning-platform-release/gcr.io/base-cu122.py310
 ENV DEBIAN_FRONTEND=noninteractive
 RUN echo "verbose = off" > ~/.wgetrc
 

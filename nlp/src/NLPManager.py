@@ -31,6 +31,7 @@ class NLPManager:
         self.max_new_tokens = 256
         config.max_seq_len = 768
         config.max_batch_size = batch_size
+        config.max_output_len = 1  # no need logit => just set to 1, reduce VRAM bandwidth usage a lot
         model = ExLlamaV2(config)
         cache = ExLlamaV2Cache(model, lazy=True, batch_size=config.max_batch_size)
         model.load_autosplit(cache)

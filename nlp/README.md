@@ -8,6 +8,12 @@ Test:
 ```shell
 docker run -p 5002:5002 --gpus all -d 12000sgd-nlp
 ```
+Submit:
+```shell
+docker tag 12000sgd-nlp asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-nlp:latest
+docker push asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-nlp:latest
+gcloud ai models upload --region asia-southeast1 --display-name '12000sgd-nlp' --container-image-uri asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-nlp:latest --container-health-route /health --container-predict-route /extract --container-ports 5002 --version-aliases default
+```
 
 ## Input
 
