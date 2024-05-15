@@ -1,3 +1,6 @@
 [submodule "til-24-curriculum"]
 	path = til-24-curriculum
 	url = https://github.com/TIL-24/til-24-curriculum/
+[submodule "asr/asr/MP-SENet"]
+	path = asr/asr/MP-SENet
+	url = https://github.com/yxlu-0102/MP-SENet.git
