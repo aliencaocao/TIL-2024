@@ -16,10 +16,10 @@ TEAM_TRACK = os.getenv("TEAM_TRACK")
 
 
 def main():
-    # input_dir = Path(f"/home/jupyter/{TEAM_TRACK}")
-    input_dir = Path(f"../../data/{TEAM_TRACK}/train")
-    # results_dir = Path(f"/home/jupyter/{TEAM_NAME}")
-    results_dir = Path("results")
+    input_dir = Path(f"/home/jupyter/{TEAM_TRACK}")
+    # input_dir = Path(f"../../data/{TEAM_TRACK}/train")
+    results_dir = Path(f"/home/jupyter/{TEAM_NAME}")
+    # results_dir = Path("results")
 
     results_dir.mkdir(parents=True, exist_ok=True)
     instances = []
@@ -27,7 +27,7 @@ def main():
     counter = 0
 
     with open(input_dir / "vlm.jsonl", "r") as f:
-        for line in f:
+        for line in tqdm(f):
             if line.strip() == "":
                 continue
             instance = json.loads(line.strip())

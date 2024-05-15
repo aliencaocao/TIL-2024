@@ -29,24 +29,16 @@ with open(infile_path) as infile, open(outfile_path, "w") as outfile:
             ann["bbox"][2] += ann["bbox"][0]
             ann["bbox"][3] += ann["bbox"][1]
 
-            tokens_positive = []
             # throw away all chars other than alphabets and spaces
             cleaned_caption = "".join(ch for ch in ann["caption"] if ch == ' ' or ch.isalpha())
-            word_start = 0
-            for i, ch in enumerate(cleaned_caption):
-                if not ch.isalpha() or i == len(cleaned_caption)-1:
-                    tokens_positive.append([
-                        word_start + token_offset,
-                        i + token_offset + int(i == len(cleaned_caption)-1)
-                    ])
-                    word_start = i + 1
             
             regions.append({
                 "bbox": ann["bbox"],
                 "phrase": cleaned_caption,
-                # "tokens_positive" field may be unnecessary?
-                # see https://github.com/longzw1997/Open-GroundingDino/blob/main/data_format.md
-                "tokens_positive": tokens_positive,
+                "tokens_positive": [[
+                    token_offset,
+                    token_offset + len(cleaned_caption),
+                ]],
             })
             cleaned_captions.append(cleaned_caption)
             token_offset += len(cleaned_caption) + len(caption_separator)
