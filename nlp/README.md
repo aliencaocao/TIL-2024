@@ -15,30 +15,6 @@ docker push asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplu
 gcloud ai models upload --region asia-southeast1 --display-name '12000sgd-nlp' --container-image-uri asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-nlp:latest --container-health-route /health --container-predict-route /extract --container-ports 5002 --version-aliases default
 ```
 
-## Input
-
-Text transcription of a turret voice command.
-
-Example transcription: `"Target is red helicopter, heading is zero one zero, tool to deploy is surface-to-air missiles."`
-
-## Output
-
-JSON object containing three keys:
-
-1. "target", for the target identified
-2. "heading", for the heading of the target
-3. "tool", for the tool to be deployed to neutralize the target
-
-Example JSON:
-
-```json
-{
-  "target": "red helicopter",
-  "heading": "010",
-  "tool": "surface-to-air missiles"
-}
-```
-
 Function definition:
 ```python
 self.give_none_if_not_specified_string = ' Give None if not specified.'
@@ -105,8 +81,9 @@ With regex weapon detection (**not** representative as overfitted to train set)
 - NLP detailed score: {'heading': 0.9942857142857143, 'target': 0.9740786396143539, 'tool': 0.9994285714285714}
 
 ## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on test set
+with regex weapon detection
 - NLP mean score: 0.99190173
-- Timing score 0.81024160 = 17.07min
+- Timing score 0.81024160 = 17min4s
 
 ## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set + train set, eval on full train set
 without regex weapon detection
@@ -115,8 +92,25 @@ without regex weapon detection
 
 Conclusion: custom calibration is bad on OpenFunctionsV2
 
-## Pretrained Gorilla OpenFunctionsV2 EXL 4.0bit hb6 calibrated on default set, eval on full train set
-without regex weapon detection
+## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on test set
+with regex weapon detection, with `" It is known that the target is NOT {maybe_known_tool}."` instead of `" It is known that the tool is {maybe_known_tool}."`
+- NLP mean score: 0.9823668997668997
+- Timing score 0.8059028631481482 = 17min28s
+
+
+## Pretrained Gorilla OpenFunctionsV2 EXL 3.0bit hb6 calibrated on default set, eval on test set
+- Accuracy: 0.9813814370814371
+- Speed Score: 0.8239338579629629 = 15min50s
+
+
+## Pretrained Gorilla OpenFunctionsV2 EXL 4.0bit hb6 calibrated on default set, eval on test set
+- Accuracy: 0.9862283494283495
+- Speed Score: 0.8129256762962963 = 16min50s
+
+
+## Pretrained Gorilla OpenFunctionsV2 EXL 8.0bit hb8 calibrated on default set, eval on test set
+- Accuracy: 0.9867131979131979
+- Speed Score: 0.7240222144444444 = 24min50sec
 
 
 ## Pretrained mzbac/Phi-3-mini-4k-instruct-function-calling EXL 5.0bit hb6 calibrated on default set, eval on full train set
