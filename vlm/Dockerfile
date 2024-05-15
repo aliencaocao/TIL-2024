@@ -22,13 +22,21 @@ RUN apt-get -qq update >/dev/null 2>&1 && \
 RUN pip install -U pip setuptools wheel
 WORKDIR /workspace
 
-# install other requirements
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
 # copy the rest of the files into the container
 COPY src .
 
+# install other requirements
+COPY requirements*.txt ./
+
+RUN cd mmdetection && \
+    pip install -v -e . && \
+    pip install -r requirements/multimodal.txt && \
+    pip install emoji ddd-dataset && \
+    pip install git+https://github.com/lvis-dataset/lvis-api.git
+
+RUN pip install -r requirements-pytorch.txt && \
+    pip install -r requirements-mmcv.txt && \
+    pip install -r requirements.txt
 
 RUN pip cache purge
 RUN apt-get clean autoclean

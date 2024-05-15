@@ -1,0 +1,3 @@
+--find-links https://download.openmmlab.com/mmcv/dist/cu121/torch2.1/index.html
+mmcv==2.1.0
+mmengine
