@@ -10,3 +10,4 @@ protobuf<4.21.3
 transformers==4.37.0
 accelerate
 uvicorn[standard]
+ninja

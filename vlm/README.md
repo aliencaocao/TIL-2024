@@ -1,16 +1,13 @@
 # VLM
 
-## Input
+# Build & push container
+```
+docker build -t 12000sgd-vlm .
 
-1. Image containing several targets e.g.
-   ![example input image](example.jpg)
-2. A caption describing a specific target in the image. e.g.
-   `"yellow helicopter"`
+docker tag 12000sgd-vlm asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-vlm:latest
 
-Note that images are provided as 1520x870 JPG files.
+docker push asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-vlm:latest
 
-## Output
+gcloud ai models upload --region asia-southeast1 --display-name '12000sgd-vlm' --container-image-uri asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-vlm:latest --container-health-route /health --container-predict-route /identify --container-ports 5004 --version-aliases default
 
-List of 4 integers corresponding to the bounding box of target identified by the caption within the image in left-top-width-height (LTWH) format.
-
-Example: `[764, 420, 80, 60]`
+```

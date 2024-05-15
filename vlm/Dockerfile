@@ -17,7 +17,7 @@ ENV PIP_ROOT_USER_ACTION=ignore
 
 RUN apt-get -qq update >/dev/null 2>&1 && \
     apt-get -qq upgrade -y >/dev/null 2>&1 && \
-    apt-get install -qqy python3 python3-distutils python3-dev python3-pip >/dev/null 2>&1
+    apt-get install -qqy python3 python3-distutils python3-dev python3-pip libgl1-mesa-dev >/dev/null 2>&1
 
 RUN pip install -U pip setuptools wheel
 WORKDIR /workspace
@@ -25,8 +25,13 @@ WORKDIR /workspace
 # copy the rest of the files into the container
 COPY src .
 
-# install other requirements
+# copy requirements files
 COPY requirements*.txt ./
+
+# install mmdet requirements first
+# otherwise requirements.txt will install wrong PyTorch version
+RUN pip install -r requirements-pytorch.txt && \
+    pip install -r requirements-mmcv.txt
 
 RUN cd mmdetection && \
     pip install -v -e . && \
@@ -34,9 +39,8 @@ RUN cd mmdetection && \
     pip install emoji ddd-dataset && \
     pip install git+https://github.com/lvis-dataset/lvis-api.git
 
-RUN pip install -r requirements-pytorch.txt && \
-    pip install -r requirements-mmcv.txt && \
-    pip install -r requirements.txt
+# install other requirements
+RUN pip install -r requirements.txt
 
 RUN pip cache purge
 RUN apt-get clean autoclean
