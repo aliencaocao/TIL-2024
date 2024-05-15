@@ -5,37 +5,34 @@ import numpy as np
 import io
 
 class VLMManager:
-    def __init__(self, config_path, weights_path):        
+    def __init__(self, config_path, weights_path): 
+        print("Config path:", config_path)
+        print("Weights path:", weights_path)
+        
         self.inferencer = DetInferencer(
             model=config_path,
             weights=weights_path,
             show_progress=False,
         )
+        
+        print("Model loaded.")
 
     def identify(self, img_bytes: bytes, caption: str) -> List[int]:
         # image is the raw bytes of a JPEG file
         img = Image.open(io.BytesIO(img_bytes))
         img_array = np.asarray(img)
                 
-        # throw away all chars other than alphabets and spaces
         cleaned_caption = "".join(ch for ch in caption if ch == ' ' or ch.isalpha())
-
-        # word_start = 0
-        # for i, ch in enumerate(cleaned_caption):
-        #     if not ch.isalpha() or i == len(cleaned_caption)-1:
-        #         tokens_positive.append([
-        #             word_start,
-        #             i + int(i == len(cleaned_caption)-1),
-        #         ])
-        #         word_start = i + 1
         
-        results = self.inferencer(
+        # preds is a dict with keys 'labels', 'scores', 'bboxes'
+        # bboxes are in xyxy format
+        # results are sorted in descending order of confidence score
+        preds = self.inferencer(
             img_array,
-            print_result=True,
-            texts=cleaned_caption,
-            tokens_positive=[0, len(cleaned_caption)],
-        )
+            texts=[cleaned_caption],
+            tokens_positive=[[[0, len(cleaned_caption)]]],
+        )["predictions"][0]
         
-        breakpoint()
-
-        return [0, 0, 0, 0]
+        if len(preds["labels"]) == 0:
+            return [0, 0, 0, 0]
+        return preds["bboxes"][0] # take bbox with highest score

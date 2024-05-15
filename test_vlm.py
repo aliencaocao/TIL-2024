@@ -1,6 +1,6 @@
 import base64
 import json
-from typing import Dict, List
+from typing import Dict, List, Union
 import pandas as pd
 import requests
 from tqdm import tqdm
@@ -64,8 +64,8 @@ def main():
 
 
 def run_batched(
-    instances: List[Dict[str, str | int]], batch_size: int = 4
-) -> List[Dict[str, str | int]]:
+    instances: List[Dict[str, Union[str, int]]], batch_size: int = 4
+) -> List[Dict[str, Union[str, int]]]:
     # split into batches
     results = []
     for index in tqdm(range(0, len(instances), batch_size)):
