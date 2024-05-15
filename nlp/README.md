@@ -80,6 +80,35 @@ With regex weapon detection (**not** representative as overfitted to train set)
 - NLP mean score: 0.9892643084428798
 - NLP detailed score: {'heading': 0.9942857142857143, 'target': 0.9740786396143539, 'tool': 0.9994285714285714}
 
+With regex weapon detection and noun enum v1:
+- NLP mean score: 0.9409983355064514
+- NLP detailed score: {'heading': 0.99, 'target': 0.837852149376497, 'tool': 0.9951428571428571}
+
+Conclusion: spacy as enum is bad as it contain too much noise.
+
+With regex weapon detection and noun as check for LLM target v1: if disagree, use the longest noun as target:
+- NLP mean score: 0.9423480519480519
+- NLP detailed score: {'heading': 0.9942857142857143, 'target': 0.8333298701298701, 'tool': 0.9994285714285714}
+
+With regex weapon detection and noun as check for LLM target v2: v1 & add to function definition that the target is a descriptive phrase stating appearance and form of target, replace LLM target with longest spacy noun after removing tools:
+- NLP mean score: 0.9427309283309283
+- NLP detailed score: {'heading': 0.9951428571428571, 'target': 0.8333356421356422, 'tool': 0.9997142857142857}
+
+With regex weapon detection and noun as check for LLM target v3: v2 & keep only the longest noun phrase in LLM-detected target, and keep the same for LLM-detected tool (non regex found), do NOT just replace LLM target with spacy target as LLM is often better:
+No work as Spacy will give a single letter as noun phrase
+
+With regex weapon detection fresh from non-spacy, just adjusted prompt to be more descriptive on target and tool:
+- NLP mean score: 0.9947606514556094
+- NLP detailed score: {'heading': 0.9957142857142857, 'target': 0.9888533829382569, 'tool': 0.9997142857142857}
+
+With regex weapon detection, moved regex heading to before LLM generation, improve func def to include optional arg " (some of them may be known already)"
+- NLP mean score: 0.9844925370925371
+- NLP detailed score: {'heading': 0.986, 'target': 0.9817633255633256, 'tool': 0.9857142857142858}
+
+
+With regex weapon detection and color-based regex for target:
+
+
 ## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on test set
 with regex weapon detection
 - NLP mean score: 0.99190173
