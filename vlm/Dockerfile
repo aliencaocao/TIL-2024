@@ -34,7 +34,7 @@ RUN pip install -r requirements-pytorch.txt && \
     pip install -r requirements-mmcv.txt
 
 RUN cd mmdetection && \
-    pip install -v -e . && \
+    pip install -v . && \
     pip install -r requirements/multimodal.txt && \
     pip install emoji ddd-dataset && \
     pip install git+https://github.com/lvis-dataset/lvis-api.git
