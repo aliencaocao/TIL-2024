@@ -42,10 +42,11 @@ RUN cd mmdetection && \
 # install other requirements
 RUN pip install -r requirements.txt
 
+# clear cache and unnecessary files
 RUN pip cache purge
 RUN apt-get clean autoclean
 RUN apt-get autoremove --yes
-RUN rm -rf /var/lib/{apt,dpkg,cache,log}/
+RUN rm -rf /var/lib/{apt,dpkg,cache,log}/ mmdetection
 
 # start model service
 CMD uvicorn api_service:app --port 5004 --host 0.0.0.0

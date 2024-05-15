@@ -35,4 +35,11 @@ class VLMManager:
         
         if len(preds["labels"]) == 0:
             return [0, 0, 0, 0]
-        return preds["bboxes"][0] # take bbox with highest score
+        
+        # take bbox with highest score
+        bbox = preds["bboxes"][0]
+        
+        # bbox is in xyxy format; convert to xywh
+        bbox[2] -= bbox[0]
+        bbox[3] -= bbox[1]
+        return bbox

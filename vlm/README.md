@@ -11,3 +11,8 @@ docker push asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplu
 gcloud ai models upload --region asia-southeast1 --display-name '12000sgd-vlm' --container-image-uri asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-vlm:latest --container-health-route /health --container-predict-route /identify --container-ports 5004 --version-aliases default
 
 ```
+
+# Run container
+```
+docker run -p 5004:5004 --gpus all 12000sgd-vlm
+```
