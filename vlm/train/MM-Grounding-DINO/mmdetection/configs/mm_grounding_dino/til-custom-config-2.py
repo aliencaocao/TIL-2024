@@ -80,7 +80,7 @@ optim_wrapper = dict(
     type='AmpOptimWrapper',
     dtype='float16',
     optimizer=dict(
-        lr=1e-5,
+        lr=1e-4,
     ),
 )
 
@@ -93,13 +93,13 @@ train_cfg = dict(
 )
 
 param_scheduler = [
-    dict(type='LinearLR', start_factor=0.1, by_epoch=False, begin=0, end=1000),
+    dict(type='LinearLR', start_factor=0.1, by_epoch=False, begin=0, end=500),
     dict(
         type='MultiStepLR',
         begin=0,
         end=max_iter,
         by_epoch=False,
-        milestones=[int(max_iter * 0.84)],
+        milestones=[5000],
         gamma=0.1)
 ]
 
