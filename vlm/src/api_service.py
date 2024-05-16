@@ -7,10 +7,10 @@ from VLMManager import VLMManager
 app = FastAPI()
 
 vlm_manager = VLMManager(
-    # TODO: change to til-custom-config-2.py after second model done
+    # using old config because it works with new model on inference
+    # while new config does not (because test set has no annotations)
     config_path="til-custom-config.py",
-    
-    weights_path="weights/iter_8000.pth",
+    weights_path="weights/iter_8000_config2.pth",
 )
 
 

@@ -1,3 +1,6 @@
+--extra-index-url https://download.pytorch.org/whl/cu121
+--find-links https://download.openmmlab.com/mmcv/dist/cu121/torch2.1/index.html
+
 fastapi
 gdown==4.5.1
 matplotlib>=3.2.2
@@ -11,3 +14,17 @@ transformers==4.37.0
 accelerate
 uvicorn[standard]
 ninja
+
+torch==2.1.2
+torchvision==0.16.2
+
+mmcv==2.1.0
+mmengine
+
+fairscale
+jsonlines
+nltk
+pycocoevalcap
+emoji
+ddd-dataset
+lvis @ git+https://github.com/lvis-dataset/lvis-api.git

@@ -19,28 +19,16 @@ RUN apt-get -qq update >/dev/null 2>&1 && \
     apt-get -qq upgrade -y >/dev/null 2>&1 && \
     apt-get install -qqy python3 python3-distutils python3-dev python3-pip libgl1-mesa-dev >/dev/null 2>&1
 
-RUN pip install -U pip setuptools wheel
 WORKDIR /workspace
 
 # copy the rest of the files into the container
 COPY src .
 
-# copy requirements files
-COPY requirements*.txt ./
+# copy requirements file
+COPY requirements.txt .
 
-# install mmdet requirements first
-# otherwise requirements.txt will install wrong PyTorch version
-RUN pip install -r requirements-pytorch.txt && \
-    pip install -r requirements-mmcv.txt
-
-RUN cd mmdetection && \
-    pip install -v . && \
-    pip install -r requirements/multimodal.txt && \
-    pip install emoji ddd-dataset && \
-    pip install git+https://github.com/lvis-dataset/lvis-api.git
-
-# install other requirements
-RUN pip install -r requirements.txt
+# install requirements
+RUN for whl in `ls wheels`; do pip install --no-index --no-build-isolation wheels/$whl --find-links wheels/; done
 
 # clear cache and unnecessary files
 RUN pip cache purge
