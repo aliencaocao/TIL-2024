@@ -37,7 +37,8 @@ huggingface-cli download LoneStriker/gorilla-openfunctions-v2-5.0bpw-h6-exl2 --l
 ```
 3. Run calibration yourself:
 ```shell
-python exllamav2/convert.py -i nlp/src/models/gorilla-openfunctions-v2 -o nlp/src/models/exl2_tmp/ -cf nlp/src/models/gorilla-openfunctions-v2-5.0bpw-h6-exl2/ -b 5.0 -hb 6
+# make sure you running from root dir instead of root/nlp
+python exllamav2/convert.py -i nlp/src/models/gorilla-openfunctions-v2-TIL24-r16-a16-ctx768 -o nlp/src/models/exl2_tmp/ -cf nlp/src/models/gorilla-openfunctions-v2-TIL24-r16-a16-ctx768/ -b 5.0 -hb 6
 ```
 
 # Evaluations
@@ -81,14 +82,23 @@ With regex weapon detection and noun as check for LLM target v2: v1 & add to fun
 With regex weapon detection and noun as check for LLM target v3: v2 & keep only the longest noun phrase in LLM-detected target, and keep the same for LLM-detected tool (non regex found), do NOT just replace LLM target with spacy target as LLM is often better:
 No work as Spacy will give a single letter as noun phrase
 
-With regex weapon detection fresh from non-spacy, just adjusted prompt to be more descriptive on target and tool **(BEST)**:
-- NLP mean score: 0.9947606514556094
-- NLP detailed score: {'heading': 0.9957142857142857, 'target': 0.9888533829382569, 'tool': 0.9997142857142857}
+With regex weapon detection fresh from non-spacy, just adjusted prompt to be more descriptive on target and tool:
+- NLP mean score: 0.9946673358387644
+- NLP detailed score: {'heading': 0.9962857142857143, 'target': 0.991716293230579, 'tool': 0.996}
 
-With regex weapon detection, moved regex heading to before LLM generation, improve func def to include optional arg " (some of them may be known already)"
+With regex weapon detection, moved regex heading to before LLM generation, improve func def to include optional arg " (some of them may be known already)" **DITCHED**
 - NLP mean score: 0.9844925370925371
 - NLP detailed score: {'heading': 0.986, 'target': 0.9817633255633256, 'tool': 0.9857142857142858}
 **Have bug**  where target field may be missing, causing entire sample to be empty
+
+With regex weapon detection, prompt more descriptive on target and tool + make target not mandatory on retry so allow it to not give target but keep other fields if it fails, instead of whole sample fail **(BEST)**:
+NLP mean score: 0.9969136080850367
+NLP detailed score: {'heading': 0.9997142857142857, 'target': 0.9915979671122528, 'tool': 0.9994285714285714}
+
+With above + change func description in case of known heading or tool + add " A target can have multiple colors." to target desc:
+- NLP mean score: 0.988973401974375
+- NLP detailed score: {'heading': 0.9971428571428571, 'target': 0.972920205923125, 'tool': 0.9968571428571429}
+Conclusion: worse
 
 With regex weapon detection and color-based regex for target:
 
@@ -102,6 +112,13 @@ With regex weapon detection, moved regex heading to before LLM generation, impro
 **Have bug** where target field may be missing, causing entire sample to be empty
 - Accuracy: 0.9763647907647908
 - Speed Score: 0.7861219566666666 = 19min15s like due to many retries
+
+## TIL Trained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on full train set
+**Have bug** where target field may be missing, causing entire sample to be empty
+**Eval on train set, not representative!**
+- NLP mean score: 0.9984081632653061
+- NLP detailed score: {'heading': 0.9982857142857143, 'target': 0.998938775510204, 'tool': 0.998}
+
 
 ## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set + train set, eval on full train set
 without regex weapon detection

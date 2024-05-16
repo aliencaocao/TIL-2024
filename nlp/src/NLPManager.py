@@ -1,7 +1,7 @@
 import logging
 import re
 from copy import deepcopy
-from typing import Optional
+from typing import Optional, Union
 
 import orjson
 from exllamav2 import ExLlamaV2, ExLlamaV2Cache, ExLlamaV2Config, ExLlamaV2Tokenizer
@@ -20,6 +20,12 @@ class control_turret(BaseModel):
     heading: str = ''  # if regex detected then no such field will be exec
     tool: str = ''  # if regex detected then no such field will be exec
     target: str
+
+
+class control_turret_optional_target(BaseModel):
+    heading: str = ''  # if regex detected then no such field will be exec
+    tool: str = ''  # if regex detected then no such field will be exec
+    target: str = ''  # on retry target may still be empty, in this case we keep the other fields
 
 
 class NLPManager:
@@ -62,7 +68,7 @@ class NLPManager:
         functions = [
             {
                 "name": "control_turret",
-                "description": "Control the turret by giving it heading, tool to use and target description (some of them may be known already)",
+                "description": "Control the turret by giving it heading, tool to use and target description",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -147,9 +153,11 @@ class NLPManager:
             r = r.strip()[len('<<function>>'):]
             logging.debug(f'Raw response: {r}')  # TODO: regex to match heading and check if it has "" ard, else if it start with 0 we gg
             try:
-                func_call_evaled: control_turret = eval(r)
+                if on_retry:
+                    r = r.replace('control_turret', 'control_turret_optional_target')
+                func_call_evaled: Union[control_turret, control_turret_optional_target] = eval(r)
                 heading, tool, target = h or func_call_evaled.heading, w or func_call_evaled.tool, func_call_evaled.target
-            except ValidationError as e:
+            except (ValidationError, SyntaxError) as e:
                 if on_retry:
                     logging.error(f"Error evaluating function call after retry: {e}")
                     return [{"heading": "", "tool": "", "target": ""}]
@@ -168,11 +176,12 @@ if __name__ == "__main__":
     from tqdm import tqdm
 
     nlp_manager = NLPManager("models/gorilla-openfunctions-v2-5.0bpw-h6-exl2")
-    result = nlp_manager.qa(['Engage target, silver, red, and white light aircraft, heading zero seven five, with anti-air artillery.',
-                             'Turret Bravo, heading one one five, engage the brown and purple helicopter with EMP.',
-                             'Control to all air defense turrets, adjust heading to one one zero, deploy EMP tool, target the yellow, silver, and orange helicopter. Engage at will. Over.'])
-    print(result)  # TODO: Error evaluating function call after retry: 1 validation error for control_turret: missing target field, might be due to the optional one
-    exit()
+    # result = nlp_manager.qa(['Control tower to air defense turrets, this is Alpha. Set heading to zero niner zero. Target the orange, purple, and black cargo aircraft. Deploy interceptor jets. Repeat, deploy interceptor jets. Over.',
+    #                          'Navigating to three two zero. Engage the black, white, and yellow helicopter with the machine gun.',
+    #                          'Tower to all turrets, scramble interceptor jets. Heading one four zero. Engage red, blue, and grey cargo aircraft.',
+    #                          'Turrets, engage hostile target at heading two seven zero, orange missile, deploy machine gun, repeat, engage at heading two seven zero.'])
+    # print(result)
+    # exit()
     all_answers = []
 
     with open("../../data/nlp.jsonl", "r") as f:
