@@ -28,13 +28,14 @@ COPY src .
 COPY requirements.txt .
 
 # install requirements
-RUN for whl in `ls wheels`; do pip install --no-index --no-build-isolation wheels/$whl --find-links wheels/; done
+RUN pip install wheels/* --no-deps
 
 # clear cache and unnecessary files
 RUN pip cache purge
 RUN apt-get clean autoclean
 RUN apt-get autoremove --yes
-RUN rm -rf /var/lib/{apt,dpkg,cache,log}/ mmdetection
+RUN rm -rf /var/lib/{apt,dpkg,cache,log}/ mmdetection wheels
 
 # start model service
 CMD uvicorn api_service:app --port 5004 --host 0.0.0.0
+# CMD sleep 100000
