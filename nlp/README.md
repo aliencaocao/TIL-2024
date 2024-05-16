@@ -49,7 +49,7 @@ Using weapon instead of tool
 - NLP mean score: 0.9679137333565905
 - NLP detailed score: {'heading': 0.9968571428571429, 'target': 0.9515214959643531, 'tool': 0.9553625612482756}
 
-Using tool instead of weapon **(BEST)**
+Using tool instead of weapon
 - NLP mean score: 0.9688114958493109
 - NLP detailed score: {'heading': 0.9965714285714286, 'target': 0.9436904728324896, 'tool': 0.9661725861440147}
 
@@ -95,7 +95,12 @@ With regex weapon detection, prompt more descriptive on target and tool + make t
 NLP mean score: 0.9969136080850367
 NLP detailed score: {'heading': 0.9997142857142857, 'target': 0.9915979671122528, 'tool': 0.9994285714285714}
 
-With above + change func description in case of known heading or tool + add " A target can have multiple colors." to target desc:
+Above but without regex weapon detection (to not overfit on train):
+- NLP mean score: 0.9865973143258857
+- NLP detailed score: {'heading': 0.9994285714285714, 'target': 0.9869926184926185, 'tool': 0.9733707530564674}
+Conclusion: Prompt improved as target tool both improve from 0.94 and 0.96 respectively
+
+With above (with regx weapon) + change func description in case of known heading or tool + add " A target can have multiple colors." to target desc:
 - NLP mean score: 0.988973401974375
 - NLP detailed score: {'heading': 0.9971428571428571, 'target': 0.972920205923125, 'tool': 0.9968571428571429}
 Conclusion: worse
