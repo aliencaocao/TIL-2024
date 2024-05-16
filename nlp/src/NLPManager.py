@@ -122,7 +122,6 @@ class NLPManager:
                 actual_functions_string = self.functions_without_heading_string
                 user_query += f' It is known that the heading is "{maybe_known_heading}".'
 
-
         # maybe_known_tool = None
         maybe_known_tool = self.known_tools_regex.search(user_query)
         if maybe_known_tool:
@@ -166,17 +165,18 @@ class NLPManager:
 
 
 if __name__ == "__main__":
+    from tqdm import tqdm
 
     nlp_manager = NLPManager("models/gorilla-openfunctions-v2-5.0bpw-h6-exl2")
-    result = nlp_manager.qa(['Control to air defense turrets, prepare to engage the brown camouflage commercial aircraft at heading zero six five using surface-to-air missiles. Commence fire when ready. Over.',
+    result = nlp_manager.qa(['Engage target, silver, red, and white light aircraft, heading zero seven five, with anti-air artillery.',
                              'Turret Bravo, heading one one five, engage the brown and purple helicopter with EMP.',
                              'Control to all air defense turrets, adjust heading to one one zero, deploy EMP tool, target the yellow, silver, and orange helicopter. Engage at will. Over.'])
-    print(result)
+    print(result)  # TODO: Error evaluating function call after retry: 1 validation error for control_turret: missing target field, might be due to the optional one
     exit()
     all_answers = []
 
     with open("../../data/nlp.jsonl", "r") as f:
-        instances = [json.loads(line.strip()) for line in f if line.strip() != ""]
+        instances = [orjson.loads(line.strip()) for line in f if line.strip() != ""]
     batch_size = 4
     instances = instances  # take the first 400 train samples for now for eval
     for index in tqdm(range(0, len(instances), batch_size)):

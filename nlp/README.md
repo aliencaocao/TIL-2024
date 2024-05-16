@@ -1,6 +1,11 @@
 # NLP
 
 ## Docker
+Build base (only 1-time):
+```shell
+docker build -f base.dockerfile -t 12000sgd-nlp-base .
+```
+Build image with model:
 ```shell
 docker build -t 12000sgd-nlp .
 ```
@@ -13,26 +18,6 @@ Submit:
 docker tag 12000sgd-nlp asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-nlp:latest
 docker push asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-nlp:latest
 gcloud ai models upload --region asia-southeast1 --display-name '12000sgd-nlp' --container-image-uri asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-nlp:latest --container-health-route /health --container-predict-route /extract --container-ports 5002 --version-aliases default
-```
-
-Function definition:
-```python
-self.give_none_if_not_specified_string = ' Give None if not specified.'
-functions = [
-            {
-                "name": "control_turret",
-                "description": "Control the turret by giving it heading, tool to use and target description",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "heading": {"type": "string", "description": f"Heading of target in three arabic numerals and multiples of five (005 to 360).{self.give_none_if_not_specified_string}"},
-                        "tool": {"type": "string", "description": f"Tool to use/deploy.{self.give_none_if_not_specified_string}"},
-                        "target": {"type": "string", "description": f"Description of the target/enemy, exclude any quantifiers like 'the' or 'a'.{self.give_none_if_not_specified_string}"}
-                    },
-                    "required": ["heading", "tool", "target"],
-                },
-            }
-        ]
 ```
 
 # ExLlamaV2
@@ -54,7 +39,6 @@ huggingface-cli download LoneStriker/gorilla-openfunctions-v2-5.0bpw-h6-exl2 --l
 ```shell
 python exllamav2/convert.py -i nlp/src/models/gorilla-openfunctions-v2 -o nlp/src/models/exl2_tmp/ -cf nlp/src/models/gorilla-openfunctions-v2-5.0bpw-h6-exl2/ -b 5.0 -hb 6
 ```
-
 
 # Evaluations
 ## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on full train set
@@ -97,22 +81,27 @@ With regex weapon detection and noun as check for LLM target v2: v1 & add to fun
 With regex weapon detection and noun as check for LLM target v3: v2 & keep only the longest noun phrase in LLM-detected target, and keep the same for LLM-detected tool (non regex found), do NOT just replace LLM target with spacy target as LLM is often better:
 No work as Spacy will give a single letter as noun phrase
 
-With regex weapon detection fresh from non-spacy, just adjusted prompt to be more descriptive on target and tool:
+With regex weapon detection fresh from non-spacy, just adjusted prompt to be more descriptive on target and tool **(BEST)**:
 - NLP mean score: 0.9947606514556094
 - NLP detailed score: {'heading': 0.9957142857142857, 'target': 0.9888533829382569, 'tool': 0.9997142857142857}
 
 With regex weapon detection, moved regex heading to before LLM generation, improve func def to include optional arg " (some of them may be known already)"
 - NLP mean score: 0.9844925370925371
 - NLP detailed score: {'heading': 0.986, 'target': 0.9817633255633256, 'tool': 0.9857142857142858}
-
+**Have bug**  where target field may be missing, causing entire sample to be empty
 
 With regex weapon detection and color-based regex for target:
 
 
 ## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on test set
 with regex weapon detection
-- NLP mean score: 0.99190173
-- Timing score 0.81024160 = 17min4s
+- Accuracy: 0.99190173
+- Speed Score: 0.81024160 = 17min4s
+
+With regex weapon detection, moved regex heading to before LLM generation, improve func def to include optional arg " (some of them may be known already)"
+**Have bug** where target field may be missing, causing entire sample to be empty
+- Accuracy: 0.9763647907647908
+- Speed Score: 0.7861219566666666 = 19min15s like due to many retries
 
 ## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set + train set, eval on full train set
 without regex weapon detection
