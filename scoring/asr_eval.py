@@ -4,6 +4,7 @@ from typing import List
 wer_transforms = jiwer.Compose(
     [
         jiwer.ToLowerCase(),
+        jiwer.SubstituteRegexes({"-": " "}),
         jiwer.RemovePunctuation(),
         jiwer.ReduceToListOfListOfWords(),
     ]
