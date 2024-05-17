@@ -19,7 +19,7 @@ train_pipeline = [
         bbox_params=dict(
             type='BboxParams',
             format='pascal_voc',
-            label_fields=['gt_labels'],
+            label_fields=['instances', 'phrases', 'gt_ignore_flags', 'gt_bboxes_labels'],
         ),
     ),
     dict(type='RandomFlip', direction=['horizontal', 'vertical'], prob=[0.5, 0.5]),
@@ -41,7 +41,7 @@ train_pipeline = [
         bbox_params=dict(
             type='BboxParams',
             format='pascal_voc',
-            label_fields=['gt_labels'],
+            label_fields=['instances', 'phrases', 'gt_ignore_flags', 'gt_bboxes_labels'],
         ),
     ),
     dict(type='RandomChoice', transforms=[
