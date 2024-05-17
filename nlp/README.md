@@ -141,7 +141,8 @@ new prompt format (best on zeroshot)
 - Speed Score: 0.7971747083333334, maybe more retries
 
 without weapon regex:
-
+- Accuracy: 0.9955555555555555
+- Speed Score: 0.8122045603703704, maybe not having he prompt "The tool is known to be..." reduces retries
 
 ## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set + train set, eval on full train set
 without regex weapon detection
