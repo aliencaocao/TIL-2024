@@ -4,16 +4,25 @@ load_from = 'https://download.openmmlab.com/mmdetection/v3.0/mm_grounding_dino/g
 
 data_root = 'data/til/'
 
+albu_bbox_params = dict(
+    format='pascal_voc',
+    label_fields=['gt_labels'],
+),
+
 train_pipeline = [
     dict(type='LoadImageFromFile', backend_args=None),
     dict(type='LoadAnnotations', with_bbox=True),
-    dict(type='Albu', transforms=[dict(
-        type='GaussNoise',
-        var_limit=2500,
-        mean=0,
-        per_channel=True,
-        p=0.5,
-    )]),
+    dict(
+        type='Albu',
+        transforms=[dict(
+            type='GaussNoise',
+            var_limit=2500,
+            mean=0,
+            per_channel=True,
+            p=0.5,
+        )],
+        bbox_params=albu_bbox_params,
+    ),
     dict(type='RandomFlip', direction=['horizontal', 'vertical'], prob=[0.5, 0.5]),
     dict(
         type='RandomAffine',
@@ -22,12 +31,16 @@ train_pipeline = [
         scaling_ratio_range=(0.8, 1.2),
         max_shear_degree=15,
     ),
-    dict(type='Albu', transforms=[dict(
-        type='RandomBrightnessContrast',
-        brightness_limit=(-0.2, 0.2),
-        contrast_limit=(-0.2, 0.2),
-        p=0.2,
-    )]),
+    dict(
+        type='Albu',
+        transforms=[dict(
+            type='RandomBrightnessContrast',
+            brightness_limit=(-0.2, 0.2),
+            contrast_limit=(-0.2, 0.2),
+            p=0.2,
+        )],
+        bbox_params=albu_bbox_params,
+    ),
     dict(type='RandomChoice', transforms=[
         # choose between no transform, MixUp, and Mosaic
         [],
