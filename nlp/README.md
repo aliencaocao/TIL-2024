@@ -129,6 +129,15 @@ With regex weapon detection, prompt more descriptive on target and tool + make t
 - NLP detailed score: {'heading': 0.9982857142857143, 'target': 0.998938775510204, 'tool': 0.998}
 
 
+## TIL Trained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on full train set
+new prompt format (best on zeroshot)
+
+
+## TIL Trained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on test set
+new prompt format (best on zeroshot)
+- Accuracy: 0.9955555555555555
+- Speed Score: 0.7971747083333334, maybe more retries
+
 ## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set + train set, eval on full train set
 without regex weapon detection
 - NLP mean score: 0.9645239279239279
