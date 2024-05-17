@@ -118,6 +118,10 @@ With regex weapon detection, moved regex heading to before LLM generation, impro
 - Accuracy: 0.9763647907647908
 - Speed Score: 0.7861219566666666 = 19min15s like due to many retries
 
+With regex weapon detection, prompt more descriptive on target and tool + make target not mandatory on retry so allow it to not give target but keep other fields if it fails, instead of whole sample fail **(BEST)**:
+- Accuracy: 0.9978597402597402
+- Speed Score: 0.8079942874074074 = 17min16s likely due to a few more retries
+
 ## TIL Trained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on full train set
 **Have bug** where target field may be missing, causing entire sample to be empty
 **Eval on train set, not representative!**
