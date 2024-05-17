@@ -10,7 +10,7 @@ vlm_manager = VLMManager(
     # using old config because it works with new model on inference
     # while new config does not (because test set has no annotations)
     config_path="til-custom-config.py",
-    weights_path="weights/iter_8000_config2.pth",
+    weights_path="weights/iter_5000.pth",
 )
 
 
