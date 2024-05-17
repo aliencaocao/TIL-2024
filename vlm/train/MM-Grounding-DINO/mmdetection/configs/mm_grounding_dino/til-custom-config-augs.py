@@ -5,6 +5,7 @@ load_from = 'https://download.openmmlab.com/mmdetection/v3.0/mm_grounding_dino/g
 data_root = 'data/til/'
 
 albu_bbox_params = dict(
+    type='BboxParams',
     format='pascal_voc',
     label_fields=['gt_labels'],
 ),
