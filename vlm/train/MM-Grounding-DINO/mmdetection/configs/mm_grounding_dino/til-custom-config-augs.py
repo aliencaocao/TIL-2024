@@ -5,7 +5,7 @@ load_from = 'https://download.openmmlab.com/mmdetection/v3.0/mm_grounding_dino/g
 data_root = 'data/til/'
 
 train_pipeline = [
-    dict(type='LoadImageFromFile', backend_args=grit_backend_args),
+    dict(type='LoadImageFromFile', backend_args=None),
     dict(type='LoadAnnotations', with_bbox=True),
     dict(type='Albu', transforms=[dict(
         type='GaussNoise',
@@ -27,7 +27,7 @@ train_pipeline = [
         brightness_limit=(-0.2, 0.2),
         contrast_limit=(-0.2, 0.2),
         p=0.2,
-    )])
+    )]),
     dict(type='RandomChoice', transforms=[
         # choose between no transform, MixUp, and Mosaic
         [],

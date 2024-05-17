@@ -4,6 +4,9 @@ pip install mmcv==2.1.0 -f https://download.openmmlab.com/mmcv/dist/cu118/torch2
 
 We use mmcv==2.1.0 because the latest mmdet is only compatible with mmcv>=2.0.0,<2.2.
 
+Install albumentations for augmentation:
+pip install -U albumentations
+
 Need to download Punkt tokenizer for NLTK, otherwise validation will fail:
 ```
 import nltk
