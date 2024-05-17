@@ -40,16 +40,21 @@ def nlp_eval_detailed(truth: List[Dict[str, str]], hypothesis: List[Dict[str, st
 
 
 if __name__ == "__main__":
+    import orjson
     import json
-    with open("../data/nlp.jsonl", "r") as f:
-        truth = [json.loads(line.strip()) for line in f if line.strip() != ""]
-    with open('../nlp/src/eval_outputs/gorilla-openfunctions-v2-5.0bpw-h6-exl2-pretrained.json', 'r') as f:
-        hyp = [json.loads(line.strip()) for line in f if line.strip() != ""]
-    truth = truth  # take the first 400 train samples for now for eval
+    result_filename = 'gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2-5bit-hb6-3500samples'
+    if '3500samples' in result_filename:  # train set full
+        with open("../data/nlp.jsonl", "r") as f:
+            truth = [orjson.loads(line.strip()) for line in f if line.strip() != ""]
+    else:
+        with open("../nlp/src/gpt_eval.jsonl", "r") as f:
+            truth = [orjson.loads(line.strip()) for line in f if line.strip() != ""]
+    with open(f'../nlp/src/eval_outputs/{result_filename}.json', 'r') as f:
+        hyp = [orjson.loads(line.strip()) for line in f if line.strip() != ""]
     hyp = hyp[0]
     assert len(truth) == len(hyp)
     mean_score, eval_result, scores_by_truth_key = nlp_eval_detailed(truth, hyp)
     print(f"NLP mean score: {mean_score}")
     print(f"NLP detailed score: {eval_result}")
-    with open('../nlp/src/eval_results/gorilla-openfunctions-v2-5.0bpw-h6-exl2-pretrained_score.json', 'w+') as f:
+    with open(f'../nlp/src/eval_results/{result_filename}_score.json', 'w+') as f:
         f.write(json.dumps(scores_by_truth_key))
