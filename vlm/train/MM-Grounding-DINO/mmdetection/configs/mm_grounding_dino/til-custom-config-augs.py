@@ -4,12 +4,6 @@ load_from = 'https://download.openmmlab.com/mmdetection/v3.0/mm_grounding_dino/g
 
 data_root = 'data/til/'
 
-albu_bbox_params = dict(
-    type='BboxParams',
-    format='pascal_voc',
-    label_fields=['gt_labels'],
-),
-
 train_pipeline = [
     dict(type='LoadImageFromFile', backend_args=None),
     dict(type='LoadAnnotations', with_bbox=True),
@@ -22,7 +16,11 @@ train_pipeline = [
             per_channel=True,
             p=0.5,
         )],
-        bbox_params=albu_bbox_params,
+        bbox_params=dict(
+            type='BboxParams',
+            format='pascal_voc',
+            label_fields=['gt_labels'],
+        ),
     ),
     dict(type='RandomFlip', direction=['horizontal', 'vertical'], prob=[0.5, 0.5]),
     dict(
@@ -40,7 +38,11 @@ train_pipeline = [
             contrast_limit=(-0.2, 0.2),
             p=0.2,
         )],
-        bbox_params=albu_bbox_params,
+        bbox_params=dict(
+            type='BboxParams',
+            format='pascal_voc',
+            label_fields=['gt_labels'],
+        ),
     ),
     dict(type='RandomChoice', transforms=[
         # choose between no transform, MixUp, and Mosaic
