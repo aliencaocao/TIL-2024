@@ -107,6 +107,7 @@ class NLPManager:
 
         append_to_query = ''
         maybe_known_heading = None
+        # heading_regex_parsed = None
         heading_regex_parsed = self.heading_parse_regex.search(user_query)
         if heading_regex_parsed:
             heading_regex_parsed_loc = heading_regex_parsed.span()
@@ -182,6 +183,12 @@ class NLPManager:
                 logging.error(f"Error evaluating function call: {e}")
                 result_list.append({"heading": "", "tool": "", "target": ""})
             else:
+                # remove some common errors
+                tool = tool.replace('engage', '').strip()
+                tool = tool.replace('deploy', '').strip()
+                tool = tool.replace('use', '').strip()
+                target = target.replace('target', '').strip()
+
                 # Sometimes it give string "None" so when eval it dont get evaluated to None but a non-empty string, failing the checks
                 heading = None if "None" in heading else heading
                 tool = None if "None" in tool else tool

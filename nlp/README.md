@@ -91,7 +91,7 @@ With regex weapon detection, moved regex heading to before LLM generation, impro
 - NLP detailed score: {'heading': 0.986, 'target': 0.9817633255633256, 'tool': 0.9857142857142858}
 **Have bug**  where target field may be missing, causing entire sample to be empty
 
-With regex weapon detection, prompt more descriptive on target and tool + make target not mandatory on retry so allow it to not give target but keep other fields if it fails, instead of whole sample fail **(BEST)**:
+With regex weapon detection, prompt more descriptive on target and tool + make target not mandatory on retry so allow it to not give target but keep other fields if it fails, instead of whole sample fail:
 NLP mean score: 0.9969136080850367
 NLP detailed score: {'heading': 0.9997142857142857, 'target': 0.9915979671122528, 'tool': 0.9994285714285714}
 
@@ -104,6 +104,19 @@ With above (with regx weapon) + change func description in case of known heading
 - NLP mean score: 0.988973401974375
 - NLP detailed score: {'heading': 0.9971428571428571, 'target': 0.972920205923125, 'tool': 0.9968571428571429}
 Conclusion: worse
+
+new prompt format upgraded: prevent missing quote on heading, prevent premature split by repeat when detected heading or tool in the 2nd half, check for existence of target/tool in prompt to prevent hallucination. Retry if not found. Fix rare "None" treated as string but not None **(BEST)**.
+- NLP mean score: 0.9972206238206238
+- NLP detailed score: {'heading': 0.9997142857142857, 'target': 0.9925190143190143, 'tool': 0.9994285714285714}
+Conclusion: prompt improvement on target is effective
+
+  above but without regex weapon and also heading det (full zero shot):
+- NLP mean score: 0.852171472971473
+- NLP detailed score: {'heading': 0.6225714285714286, 'target': 0.980303908789623, 'tool': 0.9536390815533673}
+
+above but with regex weapon and replace "target", "deploy", "use" in tool, and "engage" in target as postprocessing:
+- NLP mean score: 0.9972978724978725
+- NLP detailed score: {'heading': 0.9997142857142857, 'target': 0.9927507603507604, 'tool': 0.9994285714285714}
 
 With regex weapon detection and color-based regex for target:
 
@@ -123,8 +136,9 @@ With regex weapon detection, prompt more descriptive on target and tool + make t
 - Speed Score: 0.8079942874074074 = 17min16s likely due to a few more retries
 
 new prompt format upgraded: prevent missing quote on heading, prevent premature split by repeat when detected heading or tool in the 2nd half, check for existence of target/tool in prompt to prevent hallucination. Retry if not found. Fix rare "None" treated as string but not None.
-- NLP mean score: 0.9999047619047619
-- NLP detailed score: {'heading': 1.0, 'target': 1.0, 'tool': 0.9997142857142857}
+
+
+Above but with regex weapon and replace "target", "deploy", "use" in tool, and "engage" in target as postprocessing:
 
 
 ## TIL Trained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on full train set
@@ -144,7 +158,12 @@ new prompt format upgraded: prevent missing quote on heading, prevent premature 
 - NLP mean score: 0.9999047619047619
 - NLP detailed score: {'heading': 1.0, 'target': 1.0, 'tool': 0.9997142857142857}
 
-## TIL Trained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on test set
+above but without regex weapon and also heading det (full zero shot):
+- NLP mean score: 0.9999047619047619
+- NLP detailed score: {'heading': 1.0, 'target': 1.0, 'tool': 0.9997142857142857}
+probably memorized
+
+## TIL Trained V2 Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on test set
 new prompt format (best on zeroshot)
 - Accuracy: 0.9955555555555555
 - Speed Score: 0.7971747083333334, maybe more retries
@@ -152,6 +171,11 @@ new prompt format (best on zeroshot)
 without weapon regex:
 - Accuracy: 0.9955555555555555
 - Speed Score: 0.8122045603703704, maybe not having he prompt "The tool is known to be..." reduces retries
+
+new prompt format upgraded: prevent missing quote on heading, prevent premature split by repeat when detected heading or tool in the 2nd half, check for existence of target/tool in prompt to prevent hallucination. Retry if not found. Fix rare "None" treated as string but not None.
+- Accuracy: 0.9993333333333333
+- Speed Score: 0.8133207179629629
+
 
 ## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set + train set, eval on full train set
 without regex weapon detection
