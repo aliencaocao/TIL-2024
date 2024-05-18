@@ -209,7 +209,7 @@ class NLPManager:
 if __name__ == "__main__":
     from tqdm import tqdm
     # model_name = 'gorilla-openfunctions-v2-5.0bpw-h6-exl2'
-    model_name = 'gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2-5bit-hb6'
+    model_name = 'gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2-5.0bpw-h6-exl2'
     nlp_manager = NLPManager(f"models/{model_name}/")
     # result = nlp_manager.qa(['Control addressing air defense turrets, prepare to deploy surface-to-air missiles. Heading zero five five. I repeat, heading zero five five. Target identified as yellow, orange, and green helicopter. Engage and neutralize the threat. Over.',
     #                          'Control here, deploy an electromagnetic pulse (EMP) in the heading of three four five to neutralize the green fighter jet.',
