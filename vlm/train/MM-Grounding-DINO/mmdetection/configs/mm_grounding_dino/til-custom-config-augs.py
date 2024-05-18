@@ -7,21 +7,7 @@ data_root = 'data/til/'
 train_pipeline = [
     dict(type='LoadImageFromFile', backend_args=None),
     dict(type='LoadAnnotations', with_bbox=True),
-    dict(
-        type='Albu',
-        transforms=[dict(
-            type='GaussNoise',
-            var_limit=2500,
-            mean=0,
-            per_channel=True,
-            p=0.5,
-        )],
-        bbox_params=dict(
-            type='BboxParams',
-            format='pascal_voc',
-            label_fields=['instances', 'phrases', 'gt_ignore_flags', 'gt_bboxes_labels'],
-        ),
-    ),
+    dict(type='GaussianNoise', prob=0.5, min_mag=0., max_mag=50.),
     dict(type='RandomFlip', direction=['horizontal', 'vertical'], prob=[0.5, 0.5]),
     dict(
         type='RandomAffine',
@@ -30,21 +16,9 @@ train_pipeline = [
         scaling_ratio_range=(0.8, 1.2),
         max_shear_degree=15,
     ),
-    dict(
-        type='Albu',
-        transforms=[dict(
-            type='RandomBrightnessContrast',
-            brightness_limit=(-0.2, 0.2),
-            contrast_limit=(-0.2, 0.2),
-            p=0.2,
-        )],
-        bbox_params=dict(
-            type='BboxParams',
-            format='pascal_voc',
-            label_fields=['instances', 'phrases', 'gt_ignore_flags', 'gt_bboxes_labels'],
-        ),
-    ),
-    dict(type='RandomChoice', transforms=[
+    dict(type='Brightness', prob=0.3, min_mag=0.75, max_mag=1.25),
+    dict(type='Contrast', prob=0.3, min_mag=0.75, max_mag=1.25),
+    dict(type='RandomChoice', prob=[0.6, 0.2, 0.2], transforms=[
         # choose between no transform, MixUp, and Mosaic
         [],
         [dict(
