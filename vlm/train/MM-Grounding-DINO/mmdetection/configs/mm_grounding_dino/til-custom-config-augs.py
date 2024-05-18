@@ -94,6 +94,7 @@ train_dataloader = dict(
     ),
     
     dataset=dict(
+        _delete_=True,
         type='ODVGDataset',
         data_root=data_root,
         ann_file='annotations_train.jsonl',
