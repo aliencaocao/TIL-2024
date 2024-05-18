@@ -47,7 +47,8 @@ class NLPManager:
         self.settings = ExLlamaV2Sampler.Settings()
         self.settings.temperature = temperature
 
-        self.heading_parse_regex_backup = re.compile(r'(?:zero|one|two|three|four|five|six|seven|eight|nine|niner)\s*(?:zero|one|two|three|four|five|six|seven|eight|nine|niner)\s*(?:zero|one|two|three|four|five|six|seven|eight|nine|niner)')
+        self.heading_parse_regex = re.compile(r'(?:zero|one|two|three|four|five|six|seven|eight|nine|niner)\s*(?:zero|one|two|three|four|five|six|seven|eight|nine|niner)\s*(?:zero|one|two|three|four|five|six|seven|eight|nine|niner)')
+        self.heading_missing_quotes_regex = re.compile(r'heading=(\d{3})')
         self.words_to_numbers = {
             'one': '1',
             'two': '2',
@@ -103,14 +104,12 @@ class NLPManager:
     def format_prompt(self, user_query: str, remove_repeat: bool = True, on_retry: bool = False) -> tuple[str, Optional[str], Optional[str]]:
         user_query = user_query.lower()
         actual_functions_string = self.functions_string
-        if remove_repeat and 'repeat' in user_query.lower():  # TODO: If regex detect heading or known weapon is after repeat, do not remove repeat
-            logging.info(f"Removing repeat from query: {user_query}")
-            user_query = user_query.split('repeat')[0].strip()
-            logging.info(f"New query: {user_query}")
 
+        append_to_query = ''
         maybe_known_heading = None
-        heading_regex_parsed = self.heading_parse_regex_backup.search(user_query)
+        heading_regex_parsed = self.heading_parse_regex.search(user_query)
         if heading_regex_parsed:
+            heading_regex_parsed_loc = heading_regex_parsed.span()
             heading_regex_parsed = heading_regex_parsed.group(0).split()
             heading_regex_parsed = ''.join([self.words_to_numbers[word.lower()] for word in heading_regex_parsed])
             try:
@@ -121,21 +120,33 @@ class NLPManager:
                 logging.info(f"Regex heading failed: {heading_regex_parsed}")
             else:
                 maybe_known_heading = heading_regex_parsed
-                logging.info(f"Detected known heading: {maybe_known_heading}, skipping that for LLM")
+                logging.info(f"Detected known heading: {maybe_known_heading}")
                 actual_functions_string = self.functions_without_heading_string
-                user_query += f' It is known that the heading is "{maybe_known_heading}".'
+                append_to_query += f' It is known that the heading is "{maybe_known_heading}".'
 
         # maybe_known_tool = None
         maybe_known_tool = self.known_tools_regex.search(user_query)
         if maybe_known_tool:
+            maybe_known_tool_loc = maybe_known_tool.span()
             maybe_known_tool = maybe_known_tool.group(0)
-            logging.info(f"Detected known tool: {maybe_known_tool}, skipping that for LLM")
+            logging.info(f"Detected known tool: {maybe_known_tool}")
             actual_functions_string = self.functions_without_heading_and_tool_string if maybe_known_heading else self.functions_without_tool_string
-            user_query += f' It is known that the tool is "{maybe_known_tool}".'
+            append_to_query += f' It is known that the tool is "{maybe_known_tool}".'
 
-        if on_retry and 'repeat' not in user_query.lower():  # means retrying but there was no repeat in the first place so model giving wrong answer is not due to removal of repeat. In this case disable the give None prompt and let it cook
+        if 'repeat' in user_query.lower():
+            if remove_repeat:
+                repeat_loc = user_query.index('repeat')
+                if (maybe_known_heading and repeat_loc > heading_regex_parsed_loc[0]) and (maybe_known_tool and repeat_loc > maybe_known_tool_loc[0]):
+                    logging.info(f"Removing repeat from query: {user_query}")
+                    user_query = user_query.split('repeat')[0].strip()
+                    logging.info(f"New query: {user_query}")
+                else:
+                    logging.info(f"Repeat is after heading or known weapon, not removing repeat")
+        elif on_retry:  # means retrying but there was no repeat in the first place so model giving wrong answer is not due to removal of repeat. In this case disable the give None prompt and let it cook
             logging.warning('Retrying but no repeat in query. Disabling give None prompt and let it COOK')
             actual_functions_string = actual_functions_string.replace(self.give_none_if_not_specified_string, '')
+
+        user_query += append_to_query
 
         return f"{self.system_prompt}### Instruction: <<function>>{actual_functions_string}\n<<question>>{user_query}\n### Response: ", maybe_known_heading, maybe_known_tool
 
@@ -147,39 +158,58 @@ class NLPManager:
         # print(len(self.tokenizer.encode(prompt[0], add_bos=True)[0]))
         result = self.generator.generate_simple(list(prompt), self.settings, self.max_new_tokens, add_bos=True, completion_only=True)
         for p, r, h, w in zip(context, result, maybe_known_heading, maybe_known_weapon):
+            p = p.lower().strip()
             r = r.strip()[len('<<function>>'):]
-            logging.debug(f'Raw response: {r}')  # TODO: regex to match heading and check if it has "" ard, else if it start with 0 we gg
+            logging.debug(f'Raw response: {r}')
             try:
                 if on_retry:
                     r = r.replace('control_turret', 'control_turret_optional_target')
+                potential_heading = self.heading_missing_quotes_regex.search(r)
+                if potential_heading:
+                    logging.info(f'Unquoted heading found, fixing {potential_heading.group(1)} -> "{potential_heading.group(1)}"')
+                    potential_heading = potential_heading.group(1)
+                    r = r.replace(potential_heading, f'"{potential_heading}"')
                 func_call_evaled: Union[control_turret, control_turret_optional_target] = eval(r)
                 heading, tool, target = h or func_call_evaled.heading, w or func_call_evaled.tool, func_call_evaled.target
-            except (ValidationError, SyntaxError) as e:  # TODO: check if tool and target is even a phrase in the query to prevent hallucination
+            except (ValidationError, SyntaxError) as e:
                 if on_retry:
                     logging.error(f"Error evaluating function call after retry: {e}")
                     return [{"heading": "", "tool": "", "target": ""}]
                 else:
-                    logging.warning('Retrying')
+                    logging.warning(f'Retrying due to {e}')
                     result_list.extend(self.qa([p], on_retry=True))
             except Exception as e:
                 logging.error(f"Error evaluating function call: {e}")
                 result_list.append({"heading": "", "tool": "", "target": ""})
             else:
-                result_list.append({"heading": heading, "tool": tool, "target": target})
+                # Sometimes it give string "None" so when eval it dont get evaluated to None but a non-empty string, failing the checks
+                heading = None if "None" in heading else heading
+                tool = None if "None" in tool else tool
+                target = None if "None" in target else target
+
+                if tool and tool in p and target and target in p:
+                    result_list.append({"heading": heading, "tool": tool, "target": target})
+                else:
+                    if on_retry:
+                        logging.error(f"Tool or target not in query after retry: tool: {tool} target: {target}, just leaving it as it is and huff copium")
+                        result_list.append({"heading": heading, "tool": tool, "target": target})
+                    else:
+                        logging.warning(f"Tool or target not in query: tool: {tool} target: {target}, retrying")
+                        result_list.extend(self.qa([p], on_retry=True))
         return result_list
 
 
 if __name__ == "__main__":
-
-    # model_name = 'gorilla-openfunctions-v2-5.0bpw-h6-exl2'
-    model_name = 'gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2-5bit-hb6'
+    from tqdm import tqdm
+    model_name = 'gorilla-openfunctions-v2-5.0bpw-h6-exl2'
+    # model_name = 'gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2-5bit-hb6'
     nlp_manager = NLPManager(f"models/{model_name}/")
-    result = nlp_manager.qa(['Control to air defense turrets, we have a visual on a purple, yellow, and grey helicopter. I repeat, a purple, yellow, and grey helicopter. Deploy electromagnetic pulse weapon immediately and set heading to one zero zero. Engage target at will. Over.',
-                             'Control calling all turrets, prepare to deploy electromagnetic pulse. I repeat, prepare to deploy electromagnetic pulse. Target is grey, red, and green fighter jet at heading two zero five. Engage and neutralize the target swiftly. Over.',
-                             'Control to all turrets, I repeat, Control to all turrets. Deploy anti-air artillery towards heading three zero five. Target is green, red, and purple missile. I need immediate response, over.',
-                             'Control to air defense turrets, I repeat, Control to air defense turrets. Deploy EMP tool against the purple, blue, and silver helicopter at heading zero one five. Engage target immediately. Over.'])
-    print(result)
-    exit()
+    # result = nlp_manager.qa(['Control addressing air defense turrets, prepare to deploy surface-to-air missiles. Heading zero five five. I repeat, heading zero five five. Target identified as yellow, orange, and green helicopter. Engage and neutralize the threat. Over.',
+    #                          'Control here, deploy an electromagnetic pulse (EMP) in the heading of three four five to neutralize the green fighter jet.',
+    #                          'Control to all turrets, I repeat, Control to all turrets. Deploy anti-air artillery towards heading three zero five. Target is green, red, and purple missile. I need immediate response, over.',
+    #                          'Control to air defense turrets, I repeat, Control to air defense turrets. Deploy EMP tool against the purple, blue, and silver helicopter at heading zero one five. Engage target immediately. Over.'])
+    # print(result)
+    # exit()
     all_answers = []
 
     with open("../../data/nlp.jsonl", "r") as f:

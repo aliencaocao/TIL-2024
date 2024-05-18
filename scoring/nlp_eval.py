@@ -18,6 +18,8 @@ def score(key: str, ref: str, hyp: str) -> float:
     # ROUGE-L for everything else
     else:
         score = scorer.score(ref, hyp)[ROUGEL]
+        if score.fmeasure != 1:
+            print(key, ref, hyp, score.fmeasure)
         return score.fmeasure
 
 

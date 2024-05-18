@@ -122,6 +122,11 @@ With regex weapon detection, prompt more descriptive on target and tool + make t
 - Accuracy: 0.9978597402597402
 - Speed Score: 0.8079942874074074 = 17min16s likely due to a few more retries
 
+new prompt format upgraded: prevent missing quote on heading, prevent premature split by repeat when detected heading or tool in the 2nd half, check for existence of target/tool in prompt to prevent hallucination. Retry if not found. Fix rare "None" treated as string but not None.
+- NLP mean score: 0.9999047619047619
+- NLP detailed score: {'heading': 1.0, 'target': 1.0, 'tool': 0.9997142857142857}
+
+
 ## TIL Trained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on full train set
 **Have bug** where target field may be missing, causing entire sample to be empty
 **Eval on train set, not representative!**
@@ -134,6 +139,10 @@ new prompt format (best on zeroshot)
 - NLP mean score: 0.9986441558441559
 - NLP detailed score: {'heading': 0.9982857142857143, 'target': 0.9990753246753247, 'tool': 0.9985714285714286}
 Hallucination when removed repeat and no actual heading/tool/target provided in the leftover prompt, thus lower score and cannot detect. Fix: check if target/tool is substring of prompt, if not, retry without repeat. If regex detect heading or known weapon is after repeat, do not remove repeat
+
+new prompt format upgraded: prevent missing quote on heading, prevent premature split by repeat when detected heading or tool in the 2nd half, check for existence of target/tool in prompt to prevent hallucination. Retry if not found. Fix rare "None" treated as string but not None.
+- NLP mean score: 0.9999047619047619
+- NLP detailed score: {'heading': 1.0, 'target': 1.0, 'tool': 0.9997142857142857}
 
 ## TIL Trained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on test set
 new prompt format (best on zeroshot)
