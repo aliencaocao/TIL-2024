@@ -7,8 +7,6 @@ data_root = 'data/til/'
 custom_imports = dict(imports=['mmdet.datasets.transforms.gaussian_noise'], allow_failed_imports=False)
 
 train_pipeline = [
-    dict(type='LoadImageFromFile', backend_args=None),
-    dict(type='LoadAnnotations', with_bbox=True),
     dict(type='GaussianNoise', prob=0.5, min_mag=0., max_mag=50.),
     dict(type='RandomFlip', direction=['horizontal', 'vertical'], prob=[0.5, 0.5]),
     dict(
@@ -104,6 +102,10 @@ train_dataloader = dict(
             ann_file='annotations_train.jsonl',
             label_map_file=None,
             data_prefix=dict(img='train/'),
+            pipeline=[
+                dict(type='LoadImageFromFile', backend_args=backend_args),
+                dict(type='LoadAnnotations', with_bbox=True)
+            ],
             return_classes=True,
         ),
         pipeline=train_pipeline,
