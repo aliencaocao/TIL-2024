@@ -4,6 +4,8 @@ load_from = 'https://download.openmmlab.com/mmdetection/v3.0/mm_grounding_dino/g
 
 data_root = 'data/til/'
 
+custom_imports = dict(imports=['mmdet.datasets.transforms.gaussian_noise'], allow_failed_imports=False)
+
 train_pipeline = [
     dict(type='LoadImageFromFile', backend_args=None),
     dict(type='LoadAnnotations', with_bbox=True),
@@ -18,7 +20,7 @@ train_pipeline = [
     ),
     dict(type='Brightness', prob=0.3, min_mag=0.75, max_mag=1.25),
     dict(type='Contrast', prob=0.3, min_mag=0.75, max_mag=1.25),
-    dict(type='RandomChoice', prob=[0.6, 0.2, 0.2], transforms=[
+    dict(type='RandomChoice', prob=[0.5, 0.25, 0.25], transforms=[
         # choose between no transform, MixUp, and Mosaic
         [],
         [dict(
