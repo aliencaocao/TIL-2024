@@ -95,6 +95,8 @@ train_dataloader = dict(
     ),
     
     dataset=dict(
+        _delete_=True,
+
         type='MultiImageMixDataset',
         dataset=dict(
             type='ODVGDataset',
