@@ -95,23 +95,23 @@ train_dataloader = dict(
     ),
     
     dataset=dict(
-        _delete_=True,
-        type='ConcatDataset',
-        datasets=[
-            dict(
-                type='MultiImageMixDataset',
-                dataset=dict(
+        type='MultiImageMixDataset',
+        dataset=dict(
+            _delete_=True,
+            type='ConcatDataset',
+            datasets=[
+                dict(
                     type='ODVGDataset',
                     data_root=data_root,
                     ann_file='annotations_train.jsonl',
                     label_map_file=None,
                     data_prefix=dict(img='train/'),
                     return_classes=True,
-                ),
-                pipeline=train_pipeline,
-            ),
-        ],
-    ),
+                )
+            ],
+        ),
+        pipeline=train_pipeline,
+    )
 )
 
 test_pipeline = [
