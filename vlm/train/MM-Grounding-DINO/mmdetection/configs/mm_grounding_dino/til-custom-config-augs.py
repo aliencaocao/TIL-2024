@@ -99,16 +99,19 @@ train_dataloader = dict(
         type='ConcatDataset',
         datasets=[
             dict(
-                type='ODVGDataset',
-                data_root=data_root,
-                ann_file='annotations_train.jsonl',
-                label_map_file=None,
-                data_prefix=dict(img='train/'),
+                type='MultiImageMixDataset',
+                dataset=dict(
+                    type='ODVGDataset',
+                    data_root=data_root,
+                    ann_file='annotations_train.jsonl',
+                    label_map_file=None,
+                    data_prefix=dict(img='train/'),
+                    return_classes=True,
+                ),
                 pipeline=train_pipeline,
-                return_classes=True,
-            )
+            ),
         ],
-    )
+    ),
 )
 
 test_pipeline = [
