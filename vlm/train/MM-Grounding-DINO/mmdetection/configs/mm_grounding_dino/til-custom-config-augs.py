@@ -7,6 +7,8 @@ data_root = 'data/til/'
 custom_imports = dict(imports=['mmdet.datasets.transforms.gaussian_noise'], allow_failed_imports=False)
 
 train_pipeline = [
+    dict(type='LoadImageFromFile', backend_args=None),
+    dict(type='LoadAnnotations', with_bbox=True),
     dict(type='GaussianNoise', prob=0.5, min_mag=0., max_mag=50.),
     dict(type='RandomFlip', direction=['horizontal', 'vertical'], prob=[0.5, 0.5]),
     dict(
@@ -18,24 +20,23 @@ train_pipeline = [
     ),
     dict(type='Brightness', prob=0.3, min_mag=0.75, max_mag=1.25),
     dict(type='Contrast', prob=0.3, min_mag=0.75, max_mag=1.25),
-    dict(type='RandomChoice', prob=[0.5, 0.25, 0.25], transforms=[
-        # choose between no transform, MixUp, and Mosaic
-        [],
-        [dict(
-            type='MixUp',
-            img_scale=(870, 1520),
-            ratio_range=(0.5, 1.5),
-            flip_ratio=0.5,
-            pad_val=114,
-            max_iters=15,
-        )],
-        [dict(
-            type='Mosaic',
-            img_scale=(870, 1520),
-            center_ratio_range=(0.5, 1.5),
-            pad_val=114,
-        )],
-    ]),
+    # dict(type='RandomChoice', prob=[0.5, 0.25, 0.25], transforms=[
+    #     [],
+    #     [dict(
+    #         type='MixUp',
+    #         img_scale=(870, 1520),
+    #         ratio_range=(0.5, 1.5),
+    #         flip_ratio=0.5,
+    #         pad_val=114,
+    #         max_iters=15,
+    #     )],
+    #     [dict(
+    #         type='Mosaic',
+    #         img_scale=(870, 1520),
+    #         center_ratio_range=(0.5, 1.5),
+    #         pad_val=114,
+    #     )],
+    # ]),
     dict(
         type='RandomChoice',
         transforms=[
@@ -93,23 +94,14 @@ train_dataloader = dict(
     ),
     
     dataset=dict(
-        _delete_=True,
-
-        type='MultiImageMixDataset',
-        dataset=dict(
-            type='ODVGDataset',
-            data_root=data_root,
-            ann_file='annotations_train.jsonl',
-            label_map_file=None,
-            data_prefix=dict(img='train/'),
-            pipeline=[
-                dict(type='LoadImageFromFile', backend_args=None),
-                dict(type='LoadAnnotations', with_bbox=True),
-            ],
-            return_classes=True,
-        ),
+        type='ODVGDataset',
+        data_root=data_root,
+        ann_file='annotations_train.jsonl',
+        label_map_file=None,
+        data_prefix=dict(img='train/'),
         pipeline=train_pipeline,
-    )
+        return_classes=True,
+    ),
 )
 
 test_pipeline = [
