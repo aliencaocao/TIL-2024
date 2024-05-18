@@ -172,6 +172,40 @@ above but without regex weapon and also heading det (full zero shot):
 - NLP detailed score: {'heading': 1.0, 'target': 1.0, 'tool': 0.9997142857142857}
   probably memorized
 
+Above same but 3.0 bit quant:
+- NLP mean score: 0.9917142857142857
+- NLP detailed score: {'heading': 0.9908571428571429, 'target': 0.9922857142857143, 'tool': 0.992}
+Have some cases of partially output string, likely due to quantization, not good
+
+Above same but 4.0 bit quant:
+Have some cases of partially output string, likely due to quantization, not good, not testing full
+
+Above same (no weapon regex) but with head bits 8.0:
+NLP mean score: 0.9996190476190476
+NLP detailed score: {'heading': 0.9997142857142857, 'target': 0.9997142857142857, 'tool': 0.9994285714285714}
+somehow worse than hb 6.0 likely because of less bits for the middle layers
+
+## TIL Trained Gorilla OpenFunctionsV2 EXL 6.0bit hb8 calibrated on default set, eval on full train set
+above but without regex weapon and also heading det (full zero shot):
+- NLP mean score: 0.9999047619047619
+- NLP detailed score: {'heading': 1.0, 'target': 1.0, 'tool': 0.9997142857142857}
+Conclusion: beyond 5.0 hb6, no more improvement.
+
+## TIL Trained Gorilla OpenFunctionsV2 EXL 4.0bit hb6 calibrated on default set, eval on full train set
+func call v2 is essentially training data. V1 was just the json and was not aligned well
+
+Without weapon and heading regex
+- NLP mean score: 0.9996190476190476
+- NLP detailed score: {'heading': 0.9997142857142857, 'target': 0.9997142857142857, 'tool': 0.9994285714285714}
+Calibration in train helps a lot in train set but still have 2 cases of memorization: it outputs the rest of the label instead of the func call
+
+## TIL Trained Gorilla OpenFunctionsV2 EXL 3.0bit hb6 calibrated on default set + func call v2, eval on full train set
+NLP mean score: 0.940952380952381
+NLP detailed score: {'heading': 0.9411428571428572, 'target': 0.9411428571428572, 'tool': 0.9405714285714286}
+A lot worse than calibrating without func call v2
+Conclusion: custom calibration on func call v2 is still bad.
+
+
 ## TIL Trained V2 Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on test set
 https://huggingface.co/aliencaocao/gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2
 `gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-5.0bpw-h6-exl2`
@@ -193,9 +227,9 @@ Above but with regex weapon and replace "target", "deploy", "use" in tool, and "
 - Speed Score: 0.7122024411111112 (probably a bug or GCP issue as all the changes were 4 str.replace after inference)
   Conclusion: VS 0.996 on pretrained, trained perfs better
 
-Above but without weapon regex or heading (full zero shot on test):
+Above but without weapon regex or heading (full zero shot on test) **BEST ZERO SHOT**:
 - Accuracy: 0.9993333333333333
-- Speed Score: 0.7064216848148148 (again, GCP issue likely)
+- Speed Score: 0.808186342037037
   Conclusion: trained model does well even without regex help
 
 
