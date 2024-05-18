@@ -1,5 +1,3 @@
-from math import sqrt
-
 _base_ = 'grounding_dino_swin-l_pretrain_all.py'
 
 load_from = 'https://download.openmmlab.com/mmdetection/v3.0/mm_grounding_dino/grounding_dino_swin-l_pretrain_all/grounding_dino_swin-l_pretrain_all-56d69e78.pth'
@@ -149,20 +147,15 @@ val_evaluator = dict(
     nms_thr=0.5,
 )
 test_evaluator = val_evaluator
-    
-k = 10/64
-lr_old = 1e-4
-beta1_old = 0.9
-beta2_old = 0.999
-eps_old = 1e-8
 
 optim_wrapper = dict(
     type='AmpOptimWrapper',
     dtype='float16',
     optimizer=dict(
-        lr=lr_old * sqrt(k),
-        betas=(1-k*(1-beta1_old), 1-k*(1-beta2_old)),
-        eps=1e-8 / sqrt(k),
+        lr=1e-4 * 0.395284708,
+        betas=(1-(10/64)*(1-0.9), 1-(10/64)*(1-0.999)),
+        eps=1e-8 / 0.395284708,
+        weight_decay=0.0001,
     ),
 )
 
