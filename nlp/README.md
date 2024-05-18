@@ -139,6 +139,8 @@ new prompt format upgraded: prevent missing quote on heading, prevent premature 
 
 
 Above but with regex weapon and replace "target", "deploy", "use" in tool, and "engage" in target as postprocessing:
+- Accuracy: 0.996647619047619
+- Speed Score: 0.718941949074074
 
 
 ## TIL Trained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on full train set
@@ -149,6 +151,8 @@ Above but with regex weapon and replace "target", "deploy", "use" in tool, and "
 
 
 ## TIL Trained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on full train set
+https://huggingface.co/aliencaocao/gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v1
+
 new prompt format (best on zeroshot)
 - NLP mean score: 0.9986441558441559
 - NLP detailed score: {'heading': 0.9982857142857143, 'target': 0.9990753246753247, 'tool': 0.9985714285714286}
@@ -164,6 +168,9 @@ above but without regex weapon and also heading det (full zero shot):
 probably memorized
 
 ## TIL Trained V2 Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on test set
+https://huggingface.co/aliencaocao/gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2
+`gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-5.0bpw-h6-exl2`
+
 new prompt format (best on zeroshot)
 - Accuracy: 0.9955555555555555
 - Speed Score: 0.7971747083333334, maybe more retries
@@ -175,6 +182,14 @@ without weapon regex:
 new prompt format upgraded: prevent missing quote on heading, prevent premature split by repeat when detected heading or tool in the 2nd half, check for existence of target/tool in prompt to prevent hallucination. Retry if not found. Fix rare "None" treated as string but not None.
 - Accuracy: 0.9993333333333333
 - Speed Score: 0.8133207179629629
+
+Above but with regex weapon and replace "target", "deploy", "use" in tool, and "engage" in target as postprocessing:
+- Accuracy: 0.9993333333333333
+- Speed Score: 0.7122024411111112 (probably a bug or GCP issue as all the changes were 4 str.replace after inference)
+Conclusion: VS 0.996 on pretrained, trained perfs better
+
+Above but without weapon regex or heading (full zero shot on test):
+
 
 
 ## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set + train set, eval on full train set
