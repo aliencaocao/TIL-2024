@@ -103,7 +103,7 @@ class NLPManager:
     def format_prompt(self, user_query: str, remove_repeat: bool = True, on_retry: bool = False) -> tuple[str, Optional[str], Optional[str]]:
         user_query = user_query.lower()
         actual_functions_string = self.functions_string
-        if remove_repeat and 'repeat' in user_query.lower():
+        if remove_repeat and 'repeat' in user_query.lower():  # TODO: If regex detect heading or known weapon is after repeat, do not remove repeat
             logging.info(f"Removing repeat from query: {user_query}")
             user_query = user_query.split('repeat')[0].strip()
             logging.info(f"New query: {user_query}")
@@ -113,9 +113,6 @@ class NLPManager:
         if heading_regex_parsed:
             heading_regex_parsed = heading_regex_parsed.group(0).split()
             heading_regex_parsed = ''.join([self.words_to_numbers[word.lower()] for word in heading_regex_parsed])
-        else:
-            heading_regex_parsed = None
-        if heading_regex_parsed:  # if both methods agree then no more dispute
             try:
                 heading_int = int(heading_regex_parsed)
             except ValueError:
@@ -157,7 +154,7 @@ class NLPManager:
                     r = r.replace('control_turret', 'control_turret_optional_target')
                 func_call_evaled: Union[control_turret, control_turret_optional_target] = eval(r)
                 heading, tool, target = h or func_call_evaled.heading, w or func_call_evaled.tool, func_call_evaled.target
-            except (ValidationError, SyntaxError) as e:
+            except (ValidationError, SyntaxError) as e:  # TODO: check if tool and target is even a phrase in the query to prevent hallucination
                 if on_retry:
                     logging.error(f"Error evaluating function call after retry: {e}")
                     return [{"heading": "", "tool": "", "target": ""}]
@@ -173,19 +170,22 @@ class NLPManager:
 
 
 if __name__ == "__main__":
-    from tqdm import tqdm
 
-    nlp_manager = NLPManager("models/gorilla-openfunctions-v2-5.0bpw-h6-exl2")
-    # result = nlp_manager.qa(['Control tower to air defense turrets, this is Alpha. Set heading to zero niner zero. Target the orange, purple, and black cargo aircraft. Deploy interceptor jets. Repeat, deploy interceptor jets. Over.',
-    #                          'Navigating to three two zero. Engage the black, white, and yellow helicopter with the machine gun.',
-    #                          'Tower to all turrets, scramble interceptor jets. Heading one four zero. Engage red, blue, and grey cargo aircraft.',
-    #                          'Turrets, engage hostile target at heading two seven zero, orange missile, deploy machine gun, repeat, engage at heading two seven zero.'])
-    # print(result)
-    # exit()
+    # model_name = 'gorilla-openfunctions-v2-5.0bpw-h6-exl2'
+    model_name = 'gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2-5bit-hb6'
+    nlp_manager = NLPManager(f"models/{model_name}/")
+    result = nlp_manager.qa(['Control to air defense turrets, we have a visual on a purple, yellow, and grey helicopter. I repeat, a purple, yellow, and grey helicopter. Deploy electromagnetic pulse weapon immediately and set heading to one zero zero. Engage target at will. Over.',
+                             'Control calling all turrets, prepare to deploy electromagnetic pulse. I repeat, prepare to deploy electromagnetic pulse. Target is grey, red, and green fighter jet at heading two zero five. Engage and neutralize the target swiftly. Over.',
+                             'Control to all turrets, I repeat, Control to all turrets. Deploy anti-air artillery towards heading three zero five. Target is green, red, and purple missile. I need immediate response, over.',
+                             'Control to air defense turrets, I repeat, Control to air defense turrets. Deploy EMP tool against the purple, blue, and silver helicopter at heading zero one five. Engage target immediately. Over.'])
+    print(result)
+    exit()
     all_answers = []
 
     with open("../../data/nlp.jsonl", "r") as f:
         instances = [orjson.loads(line.strip()) for line in f if line.strip() != ""]
+    # with open("gpt_eval.jsonl", "r") as f:
+    #     instances = [orjson.loads(line.strip()) for line in f if line.strip() != ""]
     batch_size = 4
     instances = instances  # take the first 400 train samples for now for eval
     for index in tqdm(range(0, len(instances), batch_size)):
@@ -203,5 +203,6 @@ if __name__ == "__main__":
         print(answers)
         all_answers.extend(answers)
 
-    with open('eval_outputs/gorilla-openfunctions-v2-5.0bpw-h6-exl2-pretrained.json', 'wb+') as f:
+    with open(f'eval_outputs/{model_name}-{len(instances)}samples.json', 'wb+') as f:
         f.write(orjson.dumps(all_answers))
+    print('Results saved to', f'eval_outputs/{model_name}-{len(instances)}samples.json')
