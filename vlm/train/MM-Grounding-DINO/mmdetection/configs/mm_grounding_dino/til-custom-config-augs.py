@@ -11,6 +11,8 @@ train_pipeline = [
     dict(type='LoadAnnotations', with_bbox=True),
     dict(type='GaussianNoise', prob=0.5, min_mag=0., max_mag=50.),
     dict(type='RandomFlip', direction=['horizontal', 'vertical'], prob=[0.5, 0.5]),
+    dict(type='Brightness', prob=0.3, min_mag=0.75, max_mag=1.25),
+    dict(type='Contrast', prob=0.3, min_mag=0.75, max_mag=1.25),
     dict(
         type='RandomAffine',
         max_rotate_degree=15,
@@ -18,8 +20,6 @@ train_pipeline = [
         scaling_ratio_range=(0.8, 1.2),
         max_shear_degree=15,
     ),
-    dict(type='Brightness', prob=0.3, min_mag=0.75, max_mag=1.25),
-    dict(type='Contrast', prob=0.3, min_mag=0.75, max_mag=1.25),
     # dict(type='RandomChoice', prob=[0.5, 0.25, 0.25], transforms=[
     #     [],
     #     [dict(
