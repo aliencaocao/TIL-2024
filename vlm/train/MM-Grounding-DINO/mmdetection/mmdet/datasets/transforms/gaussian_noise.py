@@ -33,6 +33,8 @@ class GaussianNoise(ColorTransform):
     
     def _transform_img(self, results: dict, mag: float) -> None:
         img = results['img']
-        img += np.random.normal(0., mag, img.shape)
-        results['img'] = np.clip(img, 0, 255).astype(img.dtype)
+        img_dtype = results['img'].dtype
+        
+        img = img.astype(np.float32) + np.random.normal(0., mag, img.shape, dtype=np.float32)
+        results['img'] = np.clip(img, 0., 255.).astype(img_dtype)
     
