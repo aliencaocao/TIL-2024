@@ -103,7 +103,7 @@ train_dataloader = dict(
             label_map_file=None,
             data_prefix=dict(img='train/'),
             pipeline=[
-                dict(type='LoadImageFromFile', backend_args=backend_args),
+                dict(type='LoadImageFromFile', backend_args=None),
                 dict(type='LoadAnnotations', with_bbox=True),
             ],
             return_classes=True,
