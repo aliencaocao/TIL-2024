@@ -35,11 +35,16 @@ Make sure wheel is in nlp/
 # pretrained mode calibrated on default set
 huggingface-cli download LoneStriker/gorilla-openfunctions-v2-5.0bpw-h6-exl2 --local-dir src/models/gorilla-openfunctions-v2-5.0bpw-h6-exl2 --local-dir-use-symlinks False
 ```
-3. Run calibration yourself:
+3. Run calibration (if not using pretrained):
 ```shell
 # make sure you running from root dir instead of root/nlp
-python exllamav2/convert.py -i nlp/src/models/gorilla-openfunctions-v2-TIL24-r16-a16-ctx768 -o nlp/src/models/exl2_tmp/ -cf nlp/src/models/gorilla-openfunctions-v2-TIL24-r16-a16-ctx768/ -b 5.0 -hb 6
+python exllamav2/convert.py -i nlp/src/models/gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2 -o nlp/src/models/exl2_tmp/ -cf nlp/src/models/gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2-5.0bpw-h6-exl2/ -b 5.0 -hb 6
 ```
+Or with existing measurement:
+```shell
+python exllamav2/convert.py -i nlp/src/models/gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2 -o nlp/src/models/exl2_tmp/ -cf nlp/src/models/gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2-3.0bpw-h6-exl2/ -b 3.0 -hb 6 -m nlp/src/models/exl2_tmp/measurement.json
+```
+
 
 # Evaluations
 ## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on full train set
@@ -89,7 +94,7 @@ With regex weapon detection fresh from non-spacy, just adjusted prompt to be mor
 With regex weapon detection, moved regex heading to before LLM generation, improve func def to include optional arg " (some of them may be known already)" **DITCHED**
 - NLP mean score: 0.9844925370925371
 - NLP detailed score: {'heading': 0.986, 'target': 0.9817633255633256, 'tool': 0.9857142857142858}
-**Have bug**  where target field may be missing, causing entire sample to be empty
+  **Have bug**  where target field may be missing, causing entire sample to be empty
 
 With regex weapon detection, prompt more descriptive on target and tool + make target not mandatory on retry so allow it to not give target but keep other fields if it fails, instead of whole sample fail:
 NLP mean score: 0.9969136080850367
@@ -98,17 +103,17 @@ NLP detailed score: {'heading': 0.9997142857142857, 'target': 0.9915979671122528
 Above but without regex weapon detection (to not overfit on train):
 - NLP mean score: 0.9865973143258857
 - NLP detailed score: {'heading': 0.9994285714285714, 'target': 0.9869926184926185, 'tool': 0.9733707530564674}
-Conclusion: Prompt improved as target tool both improve from 0.94 and 0.96 respectively
+  Conclusion: Prompt improved as target tool both improve from 0.94 and 0.96 respectively
 
 With above (with regx weapon) + change func description in case of known heading or tool + add " A target can have multiple colors." to target desc:
 - NLP mean score: 0.988973401974375
 - NLP detailed score: {'heading': 0.9971428571428571, 'target': 0.972920205923125, 'tool': 0.9968571428571429}
-Conclusion: worse
+  Conclusion: worse
 
 new prompt format upgraded: prevent missing quote on heading, prevent premature split by repeat when detected heading or tool in the 2nd half, check for existence of target/tool in prompt to prevent hallucination. Retry if not found. Fix rare "None" treated as string but not None **(BEST)**.
 - NLP mean score: 0.9972206238206238
 - NLP detailed score: {'heading': 0.9997142857142857, 'target': 0.9925190143190143, 'tool': 0.9994285714285714}
-Conclusion: prompt improvement on target is effective
+  Conclusion: prompt improvement on target is effective
 
   above but without regex weapon and also heading det (full zero shot):
 - NLP mean score: 0.852171472971473
@@ -136,7 +141,7 @@ With regex weapon detection, prompt more descriptive on target and tool + make t
 - Speed Score: 0.8079942874074074 = 17min16s likely due to a few more retries
 
 new prompt format upgraded: prevent missing quote on heading, prevent premature split by repeat when detected heading or tool in the 2nd half, check for existence of target/tool in prompt to prevent hallucination. Retry if not found. Fix rare "None" treated as string but not None.
-
+Not testing. See below.
 
 Above but with regex weapon and replace "target", "deploy", "use" in tool, and "engage" in target as postprocessing:
 - Accuracy: 0.996647619047619
@@ -156,7 +161,7 @@ https://huggingface.co/aliencaocao/gorilla-openfunctions-v2-TIL24-r16-a16-ctx768
 new prompt format (best on zeroshot)
 - NLP mean score: 0.9986441558441559
 - NLP detailed score: {'heading': 0.9982857142857143, 'target': 0.9990753246753247, 'tool': 0.9985714285714286}
-Hallucination when removed repeat and no actual heading/tool/target provided in the leftover prompt, thus lower score and cannot detect. Fix: check if target/tool is substring of prompt, if not, retry without repeat. If regex detect heading or known weapon is after repeat, do not remove repeat
+  Hallucination when removed repeat and no actual heading/tool/target provided in the leftover prompt, thus lower score and cannot detect. Fix: check if target/tool is substring of prompt, if not, retry without repeat. If regex detect heading or known weapon is after repeat, do not remove repeat
 
 new prompt format upgraded: prevent missing quote on heading, prevent premature split by repeat when detected heading or tool in the 2nd half, check for existence of target/tool in prompt to prevent hallucination. Retry if not found. Fix rare "None" treated as string but not None.
 - NLP mean score: 0.9999047619047619
@@ -165,7 +170,41 @@ new prompt format upgraded: prevent missing quote on heading, prevent premature 
 above but without regex weapon and also heading det (full zero shot):
 - NLP mean score: 0.9999047619047619
 - NLP detailed score: {'heading': 1.0, 'target': 1.0, 'tool': 0.9997142857142857}
-probably memorized
+  probably memorized
+
+Above same but 3.0 bit quant:
+- NLP mean score: 0.9917142857142857
+- NLP detailed score: {'heading': 0.9908571428571429, 'target': 0.9922857142857143, 'tool': 0.992}
+Have some cases of partially output string, likely due to quantization, not good
+
+Above same but 4.0 bit quant:
+Have some cases of partially output string, likely due to quantization, not good, not testing full
+
+Above same (no weapon regex) but with head bits 8.0:
+NLP mean score: 0.9996190476190476
+NLP detailed score: {'heading': 0.9997142857142857, 'target': 0.9997142857142857, 'tool': 0.9994285714285714}
+somehow worse than hb 6.0 likely because of less bits for the middle layers
+
+## TIL Trained Gorilla OpenFunctionsV2 EXL 6.0bit hb8 calibrated on default set, eval on full train set
+above but without regex weapon and also heading det (full zero shot):
+- NLP mean score: 0.9999047619047619
+- NLP detailed score: {'heading': 1.0, 'target': 1.0, 'tool': 0.9997142857142857}
+Conclusion: beyond 5.0 hb6, no more improvement.
+
+## TIL Trained Gorilla OpenFunctionsV2 EXL 4.0bit hb6 calibrated on default set, eval on full train set
+func call v2 is essentially training data. V1 was just the json and was not aligned well
+
+Without weapon and heading regex
+- NLP mean score: 0.9996190476190476
+- NLP detailed score: {'heading': 0.9997142857142857, 'target': 0.9997142857142857, 'tool': 0.9994285714285714}
+Calibration in train helps a lot in train set but still have 2 cases of memorization: it outputs the rest of the label instead of the func call
+
+## TIL Trained Gorilla OpenFunctionsV2 EXL 3.0bit hb6 calibrated on default set + func call v2, eval on full train set
+NLP mean score: 0.940952380952381
+NLP detailed score: {'heading': 0.9411428571428572, 'target': 0.9411428571428572, 'tool': 0.9405714285714286}
+A lot worse than calibrating without func call v2
+Conclusion: custom calibration on func call v2 is still bad.
+
 
 ## TIL Trained V2 Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set, eval on test set
 https://huggingface.co/aliencaocao/gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2
@@ -186,10 +225,12 @@ new prompt format upgraded: prevent missing quote on heading, prevent premature 
 Above but with regex weapon and replace "target", "deploy", "use" in tool, and "engage" in target as postprocessing:
 - Accuracy: 0.9993333333333333
 - Speed Score: 0.7122024411111112 (probably a bug or GCP issue as all the changes were 4 str.replace after inference)
-Conclusion: VS 0.996 on pretrained, trained perfs better
+  Conclusion: VS 0.996 on pretrained, trained perfs better
 
-Above but without weapon regex or heading (full zero shot on test):
-
+Above but without weapon regex or heading (full zero shot on test) **BEST ZERO SHOT**:
+- Accuracy: 0.9993333333333333
+- Speed Score: 0.808186342037037
+  Conclusion: trained model does well even without regex help
 
 
 ## Pretrained Gorilla OpenFunctionsV2 EXL 5.0bit hb6 calibrated on default set + train set, eval on full train set

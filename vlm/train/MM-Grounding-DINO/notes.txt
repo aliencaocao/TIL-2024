@@ -1,6 +1,8 @@
+conda install pytorch==2.1 torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
+
 When PyTorch is installed with conda, mim gives "KeyError: 'pkg_resources'". So we have to install mmengine and mmcv with pip as follows:
 pip install mmengine
-pip install mmcv==2.1.0 -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.1/index.html
+pip install mmcv==2.1.0 -f https://download.openmmlab.com/mmcv/dist/cu121/torch2.1/index.html
 
 We use mmcv==2.1.0 because the latest mmdet is only compatible with mmcv>=2.0.0,<2.2.
 
