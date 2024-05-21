@@ -7,6 +7,9 @@ data/*
 exllamav2
 nlp/src/models/*
 *.whl
+vlm/siglip/ViT-SO400M-14-SigLIP-384
+vlm/yolov8/runs/*
+vlm/owlv2-large-patch14-ensemble
 
 # PyCharm stuff
 .idea
