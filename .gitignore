@@ -10,6 +10,7 @@ nlp/src/models/*
 vlm/yolo-siglip/siglip-so400m-patch14-384
 vlm/yolo-siglip/yolov8/runs/*
 vlm/owlv2-large-patch14-ensemble
+results
 
 # PyCharm stuff
 .idea

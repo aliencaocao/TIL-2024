@@ -61,7 +61,7 @@ class VLMManager:
             # convert to ltwh
             bboxes.append([x1, y1, x2 - x1, y2 - y1])
 
-        logging.info(f'Captions:\n{captions}Boxes:\n{bboxes}')
+        logging.info(f'Captions:\n{captions}\nBoxes:\n{bboxes}')
 
         return bboxes
 
