@@ -8,6 +8,9 @@
 ## Models
 1. YOLOv9c
 https://drive.google.com/file/d/1EpI4Y7cbZrtwYEnEhKmdwrvDkFOcm-jZ
+```shell
+gdown 1EpI4Y7cbZrtwYEnEhKmdwrvDkFOcm-jZ
+```
 2. SigLIP-SO400M-patch14-384
 ```shell
 
