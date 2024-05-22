@@ -11,3 +11,25 @@ Note that the above example is in `mp4` format as GitHub does not support embedd
 ## Output
 
 Transcription of audio file. Example: `"Heading is one five zero, target is green commercial aircraft, tool to deploy is electromagnetic pulse."`
+
+
+# Submissions
+### Whisper Small en non combined with niner:
+- Accuracy: 0.9934860264761505
+- Speed Score: 0.825095724074074
+
+### Whisper Small en combined with niner:
+- Accuracy: 0.9926455137633957
+- Speed Score: 0.8088188985185185
+
+### Whisper Small en combined without niner:
+- Accuracy: 0.9922252574070183
+- Speed Score: 0.8239869433333333
+
+### Parakeet RNNT 0.6b non combined:
+- Accuracy: 0.9686909014498845
+- Speed Score: 0.8335885779629629
+
+### Parakeet RNNT 0.6b combined:
+- Accuracy: 0.9892834629123766
+- Speed Score: 0.8456000411111111

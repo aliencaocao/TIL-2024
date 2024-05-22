@@ -107,6 +107,7 @@ class NLPManager:
 
         append_to_query = ''
         maybe_known_heading = None
+        # heading_regex_parsed = None
         heading_regex_parsed = self.heading_parse_regex.search(user_query)
         if heading_regex_parsed:
             heading_regex_parsed_loc = heading_regex_parsed.span()
@@ -182,6 +183,12 @@ class NLPManager:
                 logging.error(f"Error evaluating function call: {e}")
                 result_list.append({"heading": "", "tool": "", "target": ""})
             else:
+                # remove some common errors
+                tool = tool.replace('engage', '').strip()
+                tool = tool.replace('deploy', '').strip()
+                tool = tool.replace('use', '').strip()
+                target = target.replace('target', '').strip()
+
                 # Sometimes it give string "None" so when eval it dont get evaluated to None but a non-empty string, failing the checks
                 heading = None if "None" in heading else heading
                 tool = None if "None" in tool else tool
@@ -201,8 +208,8 @@ class NLPManager:
 
 if __name__ == "__main__":
     from tqdm import tqdm
-    model_name = 'gorilla-openfunctions-v2-5.0bpw-h6-exl2'
-    # model_name = 'gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2-5bit-hb6'
+    # model_name = 'gorilla-openfunctions-v2-5.0bpw-h6-exl2'
+    model_name = 'gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2-5.0bpw-h6-exl2'
     nlp_manager = NLPManager(f"models/{model_name}/")
     # result = nlp_manager.qa(['Control addressing air defense turrets, prepare to deploy surface-to-air missiles. Heading zero five five. I repeat, heading zero five five. Target identified as yellow, orange, and green helicopter. Engage and neutralize the threat. Over.',
     #                          'Control here, deploy an electromagnetic pulse (EMP) in the heading of three four five to neutralize the green fighter jet.',

@@ -1,5 +1,10 @@
 # VLM
 
+# Build base
+```bash
+docker build -t 12000sgd-vlm-base -f base.dockerfile .
+```
+
 ## Build & push container
 ```bash
 docker build -t 12000sgd-vlm . && \
@@ -23,3 +28,5 @@ docker run -p 5004:5004 --gpus all 12000sgd-vlm
 | MM Grounding DINO | 7000 | Linear warmup 1k steps from 1e-5 to 1e-4, back to 1e-5 at 5000 steps | Default | Default | No | 0.488 | 0.5482950594444445 |
 | MM Grounding DINO | 5000 | Linear warmup 1k steps from 1e-5 to 1e-4, back to 1e-5 at 5000 steps | Default | Default | No | 0.479 | 0.5338830794444445 |
 | MM Grounding DINO | 9000 | Linear warmup 1k steps from 1e-5 to 1e-4, back to 1e-5 at 5000 steps | Default | Default | No | 0.487 | 0.5549248251851852 |
+| MM Grounding DINO | 10000 | Linear warmup 1k steps from 3.95e-5 to 3.95e-4, back to 3.95e-5 at 5000 steps | Brightness, contrast, Gaussian noise | Default | No | 0.509 | 0.4668306538888889 |
+| MM Grounding DINO | 10000 | Same as prev, but trained for additional 2000 steps with LR = 3.95e-6 | Brightness, contrast, Gaussian noise | Default | No | 0.504 | 0.564885440925926 |

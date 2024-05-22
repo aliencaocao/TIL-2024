@@ -1,4 +1,5 @@
 import base64
+import os
 from fastapi import FastAPI, Request
 
 from VLMManager import VLMManager
@@ -10,7 +11,7 @@ vlm_manager = VLMManager(
     # using old config because it works with new model on inference
     # while new config does not (because test set has no annotations)
     config_path="til-custom-config.py",
-    weights_path="weights/iter_11000_config2.pth",
+    weights_path=f"weights/{os.environ['WEIGHTS_FILENAME']}",
 )
 
 
