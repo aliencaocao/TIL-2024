@@ -46,8 +46,6 @@ Conclusion: ESRGANx2 is bad at prepad=1
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + ESRGANx4 + SigLIP
 pre_pad=1: val set 0.7809975412715139
 
-Conclusion: 
-
 pre_pad=10: val set 0.720480753613773
 
 Conclusion: ESRGANx4 is a lot better than 2x but 20% slower at prepad=1, ESRGANx4 is bad at prepad=10 somehow, but overall 4x is better than 2x
