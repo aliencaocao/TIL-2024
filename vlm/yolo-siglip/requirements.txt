@@ -3,3 +3,5 @@ transformers
 pillow
 uvicorn
 fastapi
+dill  # yolov9c need
+sentencepiece  # siglip need
