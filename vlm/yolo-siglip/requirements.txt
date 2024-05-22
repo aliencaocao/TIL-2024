@@ -1,0 +1,5 @@
+git+https://github.com/ultralytics/ultralytics.git@main
+transformers
+pillow
+uvicorn
+fastapi

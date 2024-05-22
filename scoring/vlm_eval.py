@@ -63,8 +63,9 @@ if __name__ == "__main__":
     with open('../data/vlm.jsonl', 'r') as f:
         labels = [orjson.loads(line.strip()) for line in f if line.strip() != ""]
 
-    with open('../vlm/CoDet-main/codet_zeroshot.json', 'r') as f:
+    with open('../vlm/yolo-siglip/yolo-siglip-zeroshot.json', 'r') as f:
         predictions = orjson.loads(f.read())
+    labels = labels[-len(predictions):]
     """
     Assumes pred format:
     {"image":"image_0.jpg","annotations":[{"bbox":[528,116,632,156],"score":0.8772995471954346,"caption":"white and red helicopter"},...]}
@@ -79,12 +80,12 @@ if __name__ == "__main__":
             # find all predictions for this caption
             pred = [p for p in prediction['annotations'] if p['caption'] == caption]
             # get the highest scoring prediction
-            pred = max(pred, key=lambda x: x['score']) if pred else None
+            # pred = max(pred, key=lambda x: x['score']) if pred else None
             if not pred:
                 print(f"Missing prediction for {caption}")
                 scores.append(0)
                 continue
-            pred_bbox_xyxy = pred['bbox']
+            pred_bbox_xyxy = pred[0]['bbox']
             pred_bbox_ltwh = [
                 pred_bbox_xyxy[0],
                 pred_bbox_xyxy[1],
