@@ -12,11 +12,18 @@ import orjson
 from PIL import Image
 from tqdm import tqdm
 
-def clip_bbox_unnormalized_xywh(bbox, img_width, img_height):
+def format_bbox(bbox, img_width, img_height):
+  """Accepts boxes in COCO format and returns them in YOLO format."""
+  bbox[0] = (bbox[0] + bbox[2] / 2) / img_width
+  bbox[1] = (bbox[1] + bbox[3] / 2) / img_height
+  bbox[2] /= img_width
+  bbox[3] /= img_height
+
   bbox[0] = max(0, bbox[0])
   bbox[1] = max(0, bbox[1])
-  bbox[2] = min(img_width - bbox[0], bbox[2])
-  bbox[3] = min(img_height - bbox[1], bbox[3])
+  bbox[2] = min(1 - bbox[0], bbox[2])
+  bbox[3] = min(1 - bbox[1], bbox[3])
+  
   return bbox
 
 def get_split(split):
@@ -27,17 +34,13 @@ def get_split(split):
       x = orjson.loads(line)
       anns = x["annotations"]
       img = Image.open(f"data/{split}/{x['image']}")
-      # img.load() # bypass PIL lazy loading
       ds_list.append({
         "image_id": int(x["image"][6:-4]),
-        # "image_id": i,
         "image": img,
         "width": img.width,
         "height": img.height,
         "objects": {
-          # "id" key not used
-          # "area": [ann["bbox"][2] * ann["bbox"][3] for ann in anns],
-          "bbox": [clip_bbox_unnormalized_xywh(ann["bbox"], img.width, img.height) for ann in anns],
+          "bbox": [format_bbox(ann["bbox"], img.width, img.height) for ann in anns],
           "caption": [ann["caption"] for ann in anns],
         },
       })
@@ -72,40 +75,41 @@ augmentation = albumentations.Compose(
     ),
     # MixUp / Mosaic?
   ],
-  bbox_params=albumentations.BboxParams(format="coco", label_fields=["captions"]),
+  bbox_params=albumentations.BboxParams(format="yolo", label_fields=["captions"]),
 )
 
 import numpy as np
 import torch
 
-def transform_sample(batch):
-  # batch is a Dict[str, list], NOT a list!
-  # perform augmentations HERE
-  # but perform processing in collate_fn
+def get_transform(split):
+  def transform_batch(batch):
+    # batch is a Dict[str, list], NOT a list!
+    # perform augmentations HERE
+    # but perform processing in collate_fn
 
-  images_new = []
-  objects_new = []
+    if split != "train":
+      return batch
 
-  for img, obj in zip(batch["image"], batch["objects"]):
-    img_augmented = augmentation(
-      image=np.asarray(img.convert("RGB")),
-      bboxes=obj["bbox"],
-      captions=obj["caption"],
-    )
-    images_new.append(img_augmented["image"])
-    objects_new.append([{
-      "bbox": [
-        (bbox[0] + bbox[2] / 2) / img.width,
-        (bbox[1] + bbox[3] / 2) / img.height,
-        bbox[2] / img.width,
-        bbox[3] / img.height,
-      ],
-      "caption": caption,
-    } for bbox, caption in zip(img_augmented["bboxes"], img_augmented["captions"])])
+    images_new = []
+    objects_new = []
 
-  batch["image"] = images_new
-  batch["objects"] = objects_new
-  return batch
+    for img, obj in zip(batch["image"], batch["objects"]):
+      img_augmented = augmentation(
+        image=np.asarray(img.convert("RGB")),
+        bboxes=obj["bbox"],
+        captions=obj["caption"],
+      )
+      images_new.append(img_augmented["image"])
+      objects_new.append([{
+        "bbox": bbox,
+        "caption": caption,
+      } for bbox, caption in zip(img_augmented["bboxes"], img_augmented["captions"])])
+
+    batch["image"] = images_new
+    batch["objects"] = objects_new
+    return batch
+
+  return transform_batch
 
 def collate_fn(batch_list):
   # add dummy caption to end of samples with most queries
@@ -129,8 +133,8 @@ def collate_fn(batch_list):
 
   return batch
 
-train_ds = train_ds.with_transform(transform_sample)
-val_ds = val_ds.with_transform(transform_sample)
+train_ds = train_ds.with_transform(get_transform("train"))
+val_ds = val_ds.with_transform(get_transform("val"))
 
 # ------------------- CUSTOM LOSS -------------------
 
@@ -449,7 +453,7 @@ def custom_loss(outputs, labels_boxes):
   # because each image has a different number of ground-truth labels  
   num_classes = labels_boxes.shape[0]
   targets = [{
-    "boxes": labels_boxes_actual.float(), # FIXME: NORMALIZE BOXES
+    "boxes": labels_boxes_actual.float(),
     "class_labels": torch.tensor(range(num_classes)),
   }]
   
