@@ -5,6 +5,10 @@ logging.basicConfig(
   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
+# from accelerate import Accelerator
+
+# accelerator = Accelerator()
+
 # ------------------- LOAD DATA -------------------
 
 from datasets import Dataset
@@ -43,13 +47,13 @@ val_ds = Dataset.from_list(get_split("val"))
 
 # ------------------- TRANSFORMS -------------------
 
-# from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
-from transformers import Owlv2Processor, Owlv2ForObjectDetection
+from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
+# from transformers import Owlv2Processor, Owlv2ForObjectDetection
 
 checkpoint = "google/owlv2-large-patch14-ensemble"
 
-model = Owlv2ForObjectDetection.from_pretrained(checkpoint)
-processor = Owlv2Processor.from_pretrained(checkpoint)
+model = AutoModelForZeroShotObjectDetection.from_pretrained(checkpoint)
+processor = AutoProcessor.from_pretrained(checkpoint)
 
 import albumentations
 
@@ -87,10 +91,15 @@ def transform_sample(batch):
       captions=obj["caption"],
     )
     images_new.append(img_augmented["image"])
-    objects_new.append([
-      {"bbox": bbox, "caption": caption}
-      for bbox, caption in zip(img_augmented["bboxes"], img_augmented["captions"])
-    ])
+    objects_new.append([{
+      "bbox": [
+        (bbox[0] + bbox[2] / 2) / img.width,
+        (bbox[1] + bbox[3] / 2) / img.height,
+        bbox[2] / img.width,
+        bbox[3] / img.height,
+      ],
+      "caption": caption,
+    } for bbox, caption in zip(img_augmented["bboxes"], img_augmented["captions"])])
 
   batch["image"] = images_new
   batch["objects"] = objects_new
@@ -110,7 +119,6 @@ def collate_fn(batch_list):
     return_tensors="pt",
   )
 
-  # no need to put captions in labels because batch["input_ids"] contains them in tokenized form
   batch["labels"] = torch.nn.utils.rnn.pad_sequence(
     sequences=[torch.tensor([obj["bbox"] for obj in x["objects"]]) for x in batch_list],
     batch_first=True,
@@ -121,6 +129,9 @@ def collate_fn(batch_list):
 
 train_ds = train_ds.with_transform(transform_sample)
 train_ds = val_ds.with_transform(transform_sample)
+
+# train_dl = torch.utils.data.DataLoader(train_ds, batch_size=2, num_workers=2)
+# val_dl = torch.utils.data.DataLoader(val_ds, batch_size=2, num_workers=2)
 
 # ------------------- CUSTOM LOSS -------------------
 
@@ -415,7 +426,10 @@ class SetCriterion(nn.Module):
 
         # Compute the average number of target boxes accross all nodes, for normalization purposes
         num_boxes = sum(len(t["class_labels"]) for t in targets)
-        num_boxes = torch.as_tensor([num_boxes], dtype=torch.float, device=next(iter(outputs.values())).device)
+
+        it = iter(outputs.values())
+        next(it)
+        num_boxes = torch.as_tensor([num_boxes], dtype=torch.float, device=next(it).device)
 
         # Compute all the requested losses
         losses = {}
@@ -439,12 +453,6 @@ def custom_loss(outputs, labels_boxes):
     "boxes": labels_boxes_actual.float(), # FIXME: NORMALIZE BOXES
     "class_labels": torch.tensor(range(num_classes)),
   }]
-
-  # dummy_size = (*outputs["logits"].shape[:2], 1)
-  # outputs["logits"] = torch.cat(
-  #   (outputs["logits"], torch.full(dummy_size, -1e9).to(outputs["logits"].device)),
-  #   dim=2,
-  # )
   
   matcher = HungarianMatcher(cost_class = 1, cost_bbox = 5, cost_giou = 2)
   weight_dict = {'loss_ce': 1, 'loss_bbox': 5, 'loss_giou': 2}
@@ -483,23 +491,25 @@ class CustomTrainer(Trainer):
       total_loss += sum(loss.values())[0]
 
     return (total_loss, outputs) if return_outputs else total_loss
-    
+
+batch_size = 2
 
 training_args = TrainingArguments(
   output_dir="owlv2-large-patch14-ensemble",
-  num_train_epochs=30,
-  learning_rate=5e-6,
-  # lr_scheduler_type=schedule,
   eval_strategy="epoch",
-  # auto_find_batch_size=True,
-  # TODO: adjust batch size
-  per_device_train_batch_size=1,
-  per_device_eval_batch_size=1,
   save_strategy="epoch",
+  num_train_epochs=20,
+  # TODO: scale optimizer params by batch size
+  optim="adamw_torch",
+  learning_rate=5e-6,
+  lr_scheduler_type="linear",
+  warmup_steps=0,
+  per_device_train_batch_size=batch_size,
+  per_device_eval_batch_size=batch_size,
   bf16=True,
-  dataloader_num_workers=1,
-  remove_unused_columns=False,
+  dataloader_num_workers=32,
   gradient_checkpointing=True,
+  remove_unused_columns=False,
 )
 
 trainer = CustomTrainer(
