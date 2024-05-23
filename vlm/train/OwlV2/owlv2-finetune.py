@@ -130,10 +130,7 @@ def collate_fn(batch_list):
   return batch
 
 train_ds = train_ds.with_transform(transform_sample)
-train_ds = val_ds.with_transform(transform_sample)
-
-# train_dl = torch.utils.data.DataLoader(train_ds, batch_size=2, num_workers=2)
-# val_dl = torch.utils.data.DataLoader(val_ds, batch_size=2, num_workers=2)
+val_ds = val_ds.with_transform(transform_sample)
 
 # ------------------- CUSTOM LOSS -------------------
 
@@ -513,7 +510,6 @@ training_args = TrainingArguments(
   gradient_accumulation_steps=16,
   gradient_checkpointing=True,
   remove_unused_columns=False,
-  dataloader_drop_last=True,
 )
 
 trainer = CustomTrainer(
