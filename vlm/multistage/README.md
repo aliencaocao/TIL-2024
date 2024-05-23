@@ -35,9 +35,77 @@ gcloud ai models upload --region asia-southeast1 --display-name '12000sgd-multis
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + SigLIP
 val set 0.7987355110642782
 
-train set:
+test set:
 - Accuracy: 0.667
 - Speed Score: 0.7041770444444444
+
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + openai/clip-vit-large-patch14
+val set 0.8203371970495258
+
+not testing due to low perf on val
+
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + openai/clip-vit-large-patch14-336
+val set 0.8159466104671584
+
+not testing due to low perf on val
+
+high res degrade perf
+
+
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + CLIP-ViT-H-14-laion2B-s32B-b79K
+val set 0.8767123287671232
+
+test set: TO SUBMIT AGAIN DUE TO UNKNOWN BUG GIVING 0.206
+
+
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + yolo-metaclip-b16-400m
+val set 0.7799438004917457
+
+not testing as clearly worse
+
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + metaclip-b16-fullcc2.5b
+val set 0.850895679662803
+
+test set:
+
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + metaclip-b32-400m
+val set 0.7695820161573587
+
+not testing as clearly bad
+
+
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + metaclip-b32-fullcc2.5b
+val set 0.847383210396909
+
+not testing
+
+Conclusion: b16 better than b32 marginally on val set
+
+
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + metaclip-l14-400m
+val set 0.8205128205128205
+
+not testing as clearly worse than fullcc2.5b
+
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + metaclip-l14-fullcc2.5b
+val set 0.8640674394099052
+
+test set:
+
+
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + metaclip-l14-400m
+val set 0.8205128205128205
+
+not testing
+
+
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + metaclip-h14-fullcc2.5b
+val set 0.8739023533544081
+
+test set:
+
+From val set only, H series has the best perf compared to L, L is better than B. More data lead to better.
+
 
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + ESRGANx2 + SigLIP
 pre_pad=1: val set 0.672641652741911
@@ -66,12 +134,13 @@ Conclusion: pre_pad 1 or 10 dont make much diff, but speed increase VS acc impro
 
 **ESRGAN not worth it for SIGLIP. Does not improve accuracy.**
 
+
 ## TODO
 1. Train YOLOv9c with 1600 resolution (now is 640 but infer at 1600 still helps)
 2. Train YOLOv9c with noise augmentations
 3. Manual impl slicing inference (batched) for YOLO to detect small objects, tried yolo-patched-inference and it sucks
-4. Try laion/CLIP-ViT-H-14-laion2B-s32B-b79K with and without upscaling
-5. Try facebook/metaclip-b32-fullcc2.5b with and without upscaling
-6. Try facebook/metaclip-l14-fullcc2.5b with and without upscaling
-7. Try facebook/metaclip-b16-fullcc2.5b with and without upscaling
-8. Try facebook/metaclip-l14-400m with and without upscaling
+4. Try laion/CLIP-ViT-H-14-laion2B-s32B-b79K with upscaling
+5. Try facebook/metaclip-h14-fullcc2.5b with upscaling
+6. Try facebook/metaclip-l14-fullcc2.5b with upscaling
+7. Try facebook/metaclip-b16-fullcc2.5b with upscaling
+8. Try EVA02_CLIP_L_336_psz14_s6B with and without upscaling
