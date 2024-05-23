@@ -55,8 +55,29 @@ high res degrade perf
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + CLIP-ViT-H-14-laion2B-s32B-b79K
 val set 0.8767123287671232
 
-test set: TO SUBMIT AGAIN DUE TO UNKNOWN BUG GIVING 0.206
+with upscale x2 pad=10: val set 0.7600260841212911
 
+with upscale x4v3 pad=1: val set 0.41789445486204124
+
+with upscale x4v3 pad=10: val set 0.819634703196347
+
+test set: 
+
+Upscaling still bad
+
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + EVA02-CLIP-L-14
+30% faster than any other VIT-L models, maybe a HF pipeline overhead issue
+
+val set fp16 0.6457674745345978
+
+val set fp32 AMP 0.6454162276080084
+
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + EVA02-CLIP-L-14-336
+A bit slower than 224 but still 20% faster than other VIT-L
+
+val set 0.6434843695117668
+
+Conclusion: EVA02 CLIP sucks
 
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + yolo-metaclip-b16-400m
 val set 0.7799438004917457
@@ -90,6 +111,8 @@ not testing as clearly worse than fullcc2.5b
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + metaclip-l14-fullcc2.5b
 val set 0.8640674394099052
 
+with upscale x4v3 pad=10: val set 0.815595363540569
+
 test set:
 
 
@@ -101,6 +124,8 @@ not testing
 
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + metaclip-h14-fullcc2.5b
 val set 0.8739023533544081
+
+with upscale x4v3 pad=10: val set 0.8243765367053039
 
 test set:
 
@@ -132,15 +157,11 @@ pre_pad=10: val set 0.7804706708816298
 
 Conclusion: pre_pad 1 or 10 dont make much diff, but speed increase VS acc improvement is good. Still worse than without upscaling though. realesr-general-x4v3 is better than normal x4 marginally.
 
-**ESRGAN not worth it for SIGLIP. Does not improve accuracy.**
+**ESRGAN not worth it. Does not improve accuracy on all CLIPs.**
 
 
 ## TODO
 1. Train YOLOv9c with 1600 resolution (now is 640 but infer at 1600 still helps)
 2. Train YOLOv9c with noise augmentations
 3. Manual impl slicing inference (batched) for YOLO to detect small objects, tried yolo-patched-inference and it sucks
-4. Try laion/CLIP-ViT-H-14-laion2B-s32B-b79K with upscaling
-5. Try facebook/metaclip-h14-fullcc2.5b with upscaling
-6. Try facebook/metaclip-l14-fullcc2.5b with upscaling
-7. Try facebook/metaclip-b16-fullcc2.5b with upscaling
-8. Try EVA02_CLIP_L_336_psz14_s6B with and without upscaling
+4. Try speed diff of pipeline VS openclip
