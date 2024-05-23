@@ -28,12 +28,16 @@ Submit:
 ```shell
 docker tag 12000sgd-multistage-vlm asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-multistage-vlm:latest
 docker push asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-multistage-vlm:latest
-gcloud ai models upload --region asia-southeast1 --display-name '12000sgd-multistage-vlm' --container-image-uri asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-multistage-vlm:latest --container-health-route /health --container-predict-route /extract --container-ports 5004 --version-aliases default
+gcloud ai models upload --region asia-southeast1 --display-name '12000sgd-multistage-vlm' --container-image-uri asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-multistage-vlm:latest --container-health-route /health --container-predict-route /identify --container-ports 5004 --version-aliases default
 ```
 
 ### Evaluation
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + SigLIP
 val set 0.7987355110642782
+
+train set:
+- Accuracy: 0.667
+- Speed Score: 0.7041770444444444
 
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + ESRGANx2 + SigLIP
 pre_pad=1: val set 0.672641652741911
@@ -58,11 +62,16 @@ pre_pad=1: val set 0.782051282051282
 
 pre_pad=10: val set 0.7804706708816298
 
-Conclusion: pre_pad 1 or 10 dont make much diff, but speed increase VS acc improvement is good. Still worse than without upscaling though.
+Conclusion: pre_pad 1 or 10 dont make much diff, but speed increase VS acc improvement is good. Still worse than without upscaling though. realesr-general-x4v3 is better than normal x4 marginally.
 
-**ESRGAN not worth it. Does not improve accuracy.**
+**ESRGAN not worth it for SIGLIP. Does not improve accuracy.**
 
 ## TODO
 1. Train YOLOv9c with 1600 resolution (now is 640 but infer at 1600 still helps)
 2. Train YOLOv9c with noise augmentations
 3. Manual impl slicing inference (batched) for YOLO to detect small objects, tried yolo-patched-inference and it sucks
+4. Try laion/CLIP-ViT-H-14-laion2B-s32B-b79K with and without upscaling
+5. Try facebook/metaclip-b32-fullcc2.5b with and without upscaling
+6. Try facebook/metaclip-l14-fullcc2.5b with and without upscaling
+7. Try facebook/metaclip-b16-fullcc2.5b with and without upscaling
+8. Try facebook/metaclip-l14-400m with and without upscaling
