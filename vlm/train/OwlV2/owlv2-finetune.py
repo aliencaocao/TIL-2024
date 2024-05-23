@@ -513,6 +513,7 @@ training_args = TrainingArguments(
   gradient_accumulation_steps=16,
   gradient_checkpointing=True,
   remove_unused_columns=False,
+  dataloader_drop_last=True,
 )
 
 trainer = CustomTrainer(
