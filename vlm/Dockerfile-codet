@@ -1,0 +1,43 @@
+# example deep learning VM
+# for a full list see us-docker.pkg.dev/deeplearning-platform-release/gcr.io/
+# and for details see https://cloud.google.com/deep-learning-vm/docs/images#supported-frameworks
+FROM us-docker.pkg.dev/deeplearning-platform-release/gcr.io/base-cu122.py310
+
+# Keeps Python from generating .pyc files in the container
+ENV PYTHONDONTWRITEBYTECODE 1
+
+# Turns off buffering for easier container logging
+ENV PYTHONUNBUFFERED 1
+
+# pip gives a warning if you install packages as root
+# set this flag to just ignore the warning
+ENV PIP_ROOT_USER_ACTION=ignore
+
+RUN pip install -U pip
+RUN apt-get update 
+RUN apt-get install -y libgl1
+#WORKDIR /workspace
+# install other requirements
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY codet_main /codet_main
+# Set the working directory
+WORKDIR /codet_main
+RUN pip install ninja xformers
+
+WORKDIR /codet_main/apex
+RUN pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation --global-option="--cpp_ext" --global-option="--cuda_ext" .
+
+WORKDIR /codet_main/third_party/detectron2
+RUN pip install .
+
+WORKDIR /codet_main
+RUN pip install mss ftfy lvis nltk regex wandb einops fasttext dataclasses scikit-learn opencv-python timm==0.5.4 Pillow numpy
+RUN pip install https://download.openmmlab.com/mmcv/dist/cu121/torch2.3.0/mmcv-2.2.0-cp310-cp310-manylinux1_x86_64.whl
+RUN pip install git+https://github.com/openai/CLIP.git
+
+# copy the rest of the files into the container
+COPY src .
+
+# start model service
+CMD uvicorn api_service:app --port 5004 --host 0.0.0.0
