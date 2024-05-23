@@ -5,16 +5,19 @@ logging.basicConfig(
   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-# from accelerate import Accelerator
-
-# accelerator = Accelerator()
-
 # ------------------- LOAD DATA -------------------
 
 from datasets import Dataset
 import orjson
 from PIL import Image
 from tqdm import tqdm
+
+def clip_bbox_unnormalized_xywh(bbox, img_width, img_height):
+  bbox[0] = max(0, bbox[0])
+  bbox[1] = max(0, bbox[1])
+  bbox[2] = min(img_width - bbox[0], bbox[2])
+  bbox[3] = min(img_height - bbox[1], bbox[3])
+  return bbox
 
 def get_split(split):
   ds_list = []
@@ -34,8 +37,7 @@ def get_split(split):
         "objects": {
           # "id" key not used
           # "area": [ann["bbox"][2] * ann["bbox"][3] for ann in anns],
-          "bbox": [ann["bbox"] for ann in anns],
-          # TODO: categories aren't fixed. How to supply text?
+          "bbox": [clip_bbox_unnormalized_xywh(ann["bbox"], img.width, img.height) for ann in anns],
           "caption": [ann["caption"] for ann in anns],
         },
       })
@@ -499,15 +501,16 @@ training_args = TrainingArguments(
   eval_strategy="epoch",
   save_strategy="epoch",
   num_train_epochs=20,
-  # TODO: scale optimizer params by batch size
-  optim="adamw_torch",
-  learning_rate=5e-6,
+  # Scale optimizer params by batch size? For now we follow the paper.
+  optim="adamw_torch_fused",
+  learning_rate=2e-5,
   lr_scheduler_type="linear",
-  warmup_steps=0,
+  warmup_steps=10,
   per_device_train_batch_size=batch_size,
   per_device_eval_batch_size=batch_size,
   bf16=True,
-  dataloader_num_workers=32,
+  dataloader_num_workers=16,
+  gradient_accumulation_steps=16,
   gradient_checkpointing=True,
   remove_unused_columns=False,
 )
