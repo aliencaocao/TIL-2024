@@ -80,7 +80,7 @@ augs = {
   ),
 
   "val": albumentations.Compose(
-    transforms=[],
+    transforms=[albumentations.NoOp()],
     bbox_params=albumentations.BboxParams(format="yolo", label_fields=["captions"]),
   )
 }
