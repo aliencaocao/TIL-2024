@@ -6,7 +6,7 @@ from VLMManager import VLMManager
 
 app = FastAPI()
 
-vlm_manager = VLMManager(yolo_path='yolov9c_0.99_0.769.pt', siglip_path='siglip-so400m-patch14-384')
+vlm_manager = VLMManager(yolo_path='yolov9c_0.99_0.769.pt', clip_path='CLIP-ViT-H-14-laion2B-s32B-b79K')
 
 
 @app.get("/health")

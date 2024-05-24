@@ -11,9 +11,9 @@ https://drive.google.com/file/d/1EpI4Y7cbZrtwYEnEhKmdwrvDkFOcm-jZ
 ```shell
 gdown 1EpI4Y7cbZrtwYEnEhKmdwrvDkFOcm-jZ
 ```
-2. SigLIP-SO400M-patch14-384
+2. CLIP of choice
 ```shell
-huggingface-cli download google/siglip-so400m-patch14-384 --local-dir siglip-so400m-patch14-384 --local-dir-use-symlinks False
+huggingface-cli download facebook/metaclip-b16-fullcc2.5b --local-dir metaclip-b16-fullcc2.5b --local-dir-use-symlinks False --exclude *.bin
 ```
 
 ### Docker
@@ -165,3 +165,4 @@ Conclusion: pre_pad 1 or 10 dont make much diff, but speed increase VS acc impro
 2. Train YOLOv9c with noise augmentations
 3. Manual impl slicing inference (batched) for YOLO to detect small objects, tried yolo-patched-inference and it sucks
 4. Try speed diff of pipeline VS openclip
+5. Eval YOLOv9c with augment=true on inference

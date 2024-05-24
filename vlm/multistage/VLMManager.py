@@ -4,7 +4,7 @@ import logging
 import numpy as np
 import torch
 from PIL import Image
-from transformers import pipeline
+from transformers import AutoImageProcessor, AutoModelForZeroShotImageClassification, AutoTokenizer, ZeroShotImageClassificationPipeline
 from ultralytics import YOLO
 
 logging.basicConfig(
@@ -15,12 +15,41 @@ logging.basicConfig(
     ])
 
 
+class PipelineWithoutPostprocess(ZeroShotImageClassificationPipeline):
+    def postprocess(self, model_outputs):
+        candidate_labels = model_outputs.pop("candidate_labels")
+        logits = model_outputs["logits"][0]
+        if self.framework == "pt" and self.model.config.model_type == "siglip":
+            probs = torch.sigmoid(logits).squeeze(-1)
+            scores = probs.tolist()
+            if not isinstance(scores, list):
+                scores = [scores]
+        elif self.framework == "pt":
+            # probs = logits.softmax(dim=-1).squeeze(-1)
+            probs = logits.squeeze(-1)  # no softmax because only 1 target class at test time, softmax causes it to go 1.0 for all
+            scores = probs.tolist()
+            if not isinstance(scores, list):
+                scores = [scores]
+        else:
+            raise ValueError(f"Unsupported framework: {self.framework}")
+
+        result = [
+            {"score": score, "label": candidate_label}
+            for score, candidate_label in sorted(zip(scores, candidate_labels), key=lambda x: -x[0])
+        ]
+        return result
+
+
 class VLMManager:
-    def __init__(self, yolo_path: str, siglip_path: str):
+    def __init__(self, yolo_path: str, clip_path: str):
         logging.info(f'Loading YOLO model from {yolo_path}')
         self.yolo_model = YOLO(yolo_path)
-        logging.info(f'Loading SigLIP model from {siglip_path}')
-        self.siglip_model = pipeline(task="zero-shot-image-classification", model=siglip_path, batch_size=4, device='cuda')
+        logging.info(f'Loading CLIP model from {clip_path}')
+        self.clip_model = PipelineWithoutPostprocess(task="zero-shot-image-classification",
+                                                     model=AutoModelForZeroShotImageClassification.from_pretrained(clip_path),
+                                                     tokenizer=AutoTokenizer.from_pretrained(clip_path),
+                                                     image_processor=AutoImageProcessor.from_pretrained(clip_path),
+                                                     batch_size=4, device='cuda')
         logging.info('VLMManager initialized')
 
     def identify(self, img_bytes: list[bytes], captions: list[str]) -> list[list[int]]:
@@ -44,18 +73,18 @@ class VLMManager:
         captions_list = [[caption] for caption in captions]
         assert len(cropped_boxes) == len(captions_list)  # shld be == bs
 
-        # siglip inference
-        siglip_results = []
+        # clip inference
+        clip_results = []
         with torch.cuda.amp.autocast():
             for boxes, im_captions in zip(cropped_boxes, captions_list):
-                r = self.siglip_model(boxes, candidate_labels=im_captions)
+                r = self.clip_model(boxes, candidate_labels=im_captions)
                 # only 1 caption/img at test time so just use [0]
                 image_to_text_scores = {im_captions[0]: [box[0]['score'] for box in r]}  # {caption: [score1, score2, ...]}, scores in sequence of bbox
-                siglip_results.append(image_to_text_scores)
+                clip_results.append(image_to_text_scores)
 
         bboxes = []
         # combine the results
-        for caption, yolo_box, similarity_scores in zip(captions, yolo_result, siglip_results):
+        for caption, yolo_box, similarity_scores in zip(captions, yolo_result, clip_results):
             box_idx = np.argmax(similarity_scores[caption])
             x1, y1, x2, y2 = yolo_box[box_idx][0]
             # convert to ltwh
@@ -71,7 +100,7 @@ if __name__ == "__main__":
     import orjson
     import base64
 
-    vlm_manager = VLMManager(yolo_path='yolov9c_0.99_0.769.pt', siglip_path='siglip-so400m-patch14-384')
+    vlm_manager = VLMManager(yolo_path='yolov9c_0.99_0.769.pt', clip_path='CLIP-ViT-H-14-laion2B-s32B-b79K')
     all_answers = []
 
     batch_size = 4

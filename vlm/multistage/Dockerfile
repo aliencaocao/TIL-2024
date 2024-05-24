@@ -24,7 +24,7 @@ WORKDIR /workspace
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt && rm requirements.txt
 
-COPY siglip-so400m-patch14-384 siglip-so400m-patch14-384
+COPY CLIP-ViT-H-14-laion2B-s32B-b79K CLIP-ViT-H-14-laion2B-s32B-b79K
 COPY yolov9c_0.99_0.769.pt yolov9c_0.99_0.769.pt
 
 COPY api_service.py api_service.py
