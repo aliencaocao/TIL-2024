@@ -42,7 +42,9 @@ test set:
 
 
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + siglip-large-patch16-384
-val set
+val set 0.8140147523709168
+
+with upscale x4v3 pad=10: val set 0.40325029020448255
 
 test set:
 - Accuracy: 0.69
@@ -54,6 +56,14 @@ val set 0.7987355110642782
 test set:
 - Accuracy: 0.667
 - Speed Score: 0.7041770444444444
+
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + HuggingFaceM4/siglip-so400m-14-384-flash-attn2-navit
+Same as siglip-so400m-14-980-flash-attn2-navit
+
+val set 0.5319634703196348
+
+not testing as poor perf on val set
+
 
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + openai/clip-vit-large-patch14
 val set 0.8203371970495258
