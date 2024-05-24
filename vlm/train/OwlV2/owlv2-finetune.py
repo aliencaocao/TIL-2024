@@ -482,22 +482,26 @@ class CustomTrainer(Trainer):
   def compute_loss(self, model, inputs, return_outputs=False):
     batch_labels_boxes = inputs.pop("labels")
 
-    # batch_size = batch_labels_boxes.shape[0]
     # batch_labels_tokens = torch.chunk(inputs["input_ids"], batch_size)
-
+    
     outputs = model(**inputs, return_dict=True)
     # outputs_processed = processor.post_process_object_detection(outputs)
 
     total_loss = 0.
-    for i, x in enumerate(zip(*outputs.values())):
+    for i in range(batch_labels_boxes.shape[0]):
       # compute loss separately for each example in batch
       # since all have different num_classes (= number of text queries)
-      curr_output = OrderedDict(zip(outputs.keys(), x))
-      for k in curr_output:
-        if isinstance(curr_output[k], torch.Tensor):
-          curr_output[k] = torch.unsqueeze(curr_output[k], 0)
-      loss = custom_loss(curr_output, batch_labels_boxes[i])
-      total_loss += sum(loss.values())[0]
+      try:
+        curr_output = OrderedDict([
+          (k, torch.unsqueeze(outputs[k][i], 0))
+          for k in ("logits", "objectness_logits", "pred_boxes", "text_embeds", "image_embeds", "class_embeds")
+        ])
+
+        loss = custom_loss(curr_output, batch_labels_boxes[i])
+        total_loss += sum(loss.values())[0]
+      except Exception as ex:
+        print(outputs[i])
+        raise ex
 
     return (total_loss, outputs) if return_outputs else total_loss
 
@@ -533,4 +537,4 @@ trainer = CustomTrainer(
   tokenizer=processor,
 )
 
-trainer.train()
+trainer.train(resume_from_checkpoint=True)
