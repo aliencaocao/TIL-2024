@@ -2,7 +2,7 @@
 ## Overview
 1. YOLOv9c trained on single-class detection of targets in general
 2. Extract the bboxes as deteced by YOLO
-3. Feed each bbox into SigLIP-SO400M-patch14-384 pretrained by Google and get similarity score VS caption (1/image)
+3. Feed each bbox into siglip-so400m-patch14-384-SO400M-patch14-384 pretrained by Google and get similarity score VS caption (1/image)
 4. Choose the box with the highest similarity score
 
 ## Models
@@ -32,7 +32,23 @@ gcloud ai models upload --region asia-southeast1 --display-name '12000sgd-multis
 ```
 
 ### Evaluation
-#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + SigLIP
+
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + siglip-large-patch16-256
+val set
+
+test set:
+- Accuracy: 0.675
+- Speed Score: 0.7928535311111111
+
+
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + siglip-large-patch16-384
+val set
+
+test set:
+- Accuracy: 0.69
+- Speed Score: 0.7744111877777777
+
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + siglip-so400m-patch14-384
 val set 0.7987355110642782
 
 test set:
@@ -42,14 +58,19 @@ test set:
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + openai/clip-vit-large-patch14
 val set 0.8203371970495258
 
-not testing due to low perf on val
+test set:
+- Accuracy: 0.617
+- Speed Score: 0.7981289131481482
+
 
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + openai/clip-vit-large-patch14-336
 val set 0.8159466104671584
 
-not testing due to low perf on val
+test set:
+- Accuracy: 0.605
+- Speed Score: 0.7732906711111112
 
-high res degrade perf
+high res degrade perf on val
 
 
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + CLIP-ViT-H-14-laion2B-s32B-b79K
@@ -61,7 +82,9 @@ with upscale x4v3 pad=1: val set 0.41789445486204124
 
 with upscale x4v3 pad=10: val set 0.819634703196347
 
-test set: 
+test set:
+- Accuracy: 0.658
+- Speed Score: 0.7836627077777778
 
 Upscaling still bad
 
@@ -88,6 +111,9 @@ not testing as clearly worse
 val set 0.850895679662803
 
 test set:
+- Accuracy: 0.631
+- Speed Score: 0.7869898768518518
+
 
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + metaclip-b32-400m
 val set 0.7695820161573587
@@ -98,9 +124,11 @@ not testing as clearly bad
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + metaclip-b32-fullcc2.5b
 val set 0.847383210396909
 
-not testing
+test:
+- Accuracy: 0.635
+- Speed Score: 0.8058501905555555
 
-Conclusion: b16 better than b32 marginally on val set
+Conclusion: b16 better than b32 marginally
 
 
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + metaclip-l14-400m
@@ -114,13 +142,8 @@ val set 0.8640674394099052
 with upscale x4v3 pad=10: val set 0.815595363540569
 
 test set:
-
-
-#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + metaclip-l14-400m
-val set 0.8205128205128205
-
-not testing
-
+- Accuracy: 0.658
+- Speed Score: 0.7976818785185185
 
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + metaclip-h14-fullcc2.5b
 val set 0.8739023533544081
@@ -128,11 +151,13 @@ val set 0.8739023533544081
 with upscale x4v3 pad=10: val set 0.8243765367053039
 
 test set:
+- Accuracy: 0.64
+- Speed Score: 0.7755046064814815
 
 From val set only, H series has the best perf compared to L, L is better than B. More data lead to better.
 
 
-#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + ESRGANx2 + SigLIP
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + ESRGANx2 + siglip-so400m-patch14-384
 pre_pad=1: val set 0.672641652741911
 
 pre_pad=10: val set 0.7766069546891464
@@ -140,7 +165,7 @@ pre_pad=10: val set 0.7766069546891464
 Conclusion: ESRGANx2 is bad at prepad=1
 
 
-#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + ESRGANx4 + SigLIP
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + ESRGANx4 + siglip-so400m-patch14-384
 pre_pad=1: val set 0.7809975412715139
 
 pre_pad=10: val set 0.720480753613773
@@ -148,7 +173,7 @@ pre_pad=10: val set 0.720480753613773
 Conclusion: ESRGANx4 is a lot better than 2x but 20% slower at prepad=1, ESRGANx4 is bad at prepad=10 somehow, but overall 4x is better than 2x
 
 
-#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + ESRGANx4v3 + SigLIP
+#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + ESRGANx4v3 + siglip-so400m-patch14-384
 x4v3 is the lite model, 100% faster!
 
 pre_pad=1: val set 0.782051282051282
@@ -166,3 +191,5 @@ Conclusion: pre_pad 1 or 10 dont make much diff, but speed increase VS acc impro
 3. Manual impl slicing inference (batched) for YOLO to detect small objects, tried yolo-patched-inference and it sucks
 4. Try speed diff of pipeline VS openclip
 5. Eval YOLOv9c with augment=true on inference
+6. Try google/siglip-large-patch16-256 on val
+7. Try google/siglip-large-patch16-384 on val
