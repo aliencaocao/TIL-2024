@@ -13,17 +13,20 @@ from PIL import Image
 from tqdm import tqdm
 
 def format_bbox(bbox, img_width, img_height):
-  """Accepts boxes in COCO format and returns them in YOLO format."""
+  """
+  Accepts bboxes in COCO format and returns them in YOLO format.
+  Also clips bboxes such that they lie entirely within the image.
+  """
+  bbox[0] = max(0, bbox[0])
+  bbox[1] = max(0, bbox[1])
+  bbox[2] = min(img_width - bbox[0], bbox[2])
+  bbox[3] = min(img_height - bbox[1], bbox[3])
+  
   bbox[0] = (bbox[0] + bbox[2] / 2) / img_width
   bbox[1] = (bbox[1] + bbox[3] / 2) / img_height
   bbox[2] /= img_width
   bbox[3] /= img_height
 
-  bbox[0] = max(0, bbox[0])
-  bbox[1] = max(0, bbox[1])
-  bbox[2] = min(1 - bbox[0], bbox[2])
-  bbox[3] = min(1 - bbox[1], bbox[3])
-  
   return bbox
 
 def get_split(split):
