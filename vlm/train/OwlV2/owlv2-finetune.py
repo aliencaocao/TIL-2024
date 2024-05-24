@@ -80,7 +80,7 @@ augs = {
   ),
 
   "val": albumentations.Compose(
-    transforms=[],
+    transforms=[albumentations.NoOp()],
     bbox_params=albumentations.BboxParams(format="yolo", label_fields=["captions"]),
   )
 }
@@ -498,10 +498,9 @@ class CustomTrainer(Trainer):
 
     return (total_loss, outputs) if return_outputs else total_loss
 
-batch_size = 2
-
 training_args = TrainingArguments(
   output_dir="owlv2-large-patch14-ensemble",
+  label_names=["labels"],
   eval_strategy="epoch",
   save_strategy="epoch",
   num_train_epochs=20,
@@ -510,10 +509,13 @@ training_args = TrainingArguments(
   learning_rate=2e-5,
   lr_scheduler_type="linear",
   warmup_steps=10,
-  per_device_train_batch_size=batch_size,
-  per_device_eval_batch_size=batch_size,
+  per_device_train_batch_size=2,
+  per_device_eval_batch_size=6,
   bf16=True,
-  dataloader_num_workers=16,
+  bf16_full_eval=True,
+  tf32=True,
+  torch_compile=True,
+  dataloader_num_workers=8,
   gradient_accumulation_steps=16,
   gradient_checkpointing=True,
   remove_unused_columns=False,
