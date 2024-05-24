@@ -62,21 +62,28 @@ processor = AutoProcessor.from_pretrained(checkpoint)
 
 import albumentations
 
-augmentation = albumentations.Compose(
-  transforms=[
-    # How noisy will their test images be? var = 2500 is extreme!
-    albumentations.GaussNoise(var_limit=2500, p=0.5),
-    albumentations.HorizontalFlip(p=0.5),
-    albumentations.VerticalFlip(p=0.5),
-    albumentations.RandomBrightnessContrast(
-      p=0.5,
-      brightness_limit=0.3,
-      contrast_limit=0.3,
-    ),
-    # MixUp / Mosaic?
-  ],
-  bbox_params=albumentations.BboxParams(format="yolo", label_fields=["captions"]),
-)
+augs = {
+  "train": albumentations.Compose(
+    transforms=[
+      # How noisy will their test images be? var = 2500 is extreme!
+      albumentations.GaussNoise(var_limit=2500, p=0.5),
+      albumentations.HorizontalFlip(p=0.5),
+      albumentations.VerticalFlip(p=0.5),
+      albumentations.RandomBrightnessContrast(
+        p=0.5,
+        brightness_limit=0.3,
+        contrast_limit=0.3,
+      ),
+      # MixUp / Mosaic?
+    ],
+    bbox_params=albumentations.BboxParams(format="yolo", label_fields=["captions"]),
+  ),
+
+  "val": albumentations.Compose(
+    transforms=[],
+    bbox_params=albumentations.BboxParams(format="yolo", label_fields=["captions"]),
+  )
+}
 
 import numpy as np
 import torch
@@ -86,15 +93,11 @@ def get_transform(split):
     # batch is a Dict[str, list], NOT a list!
     # perform augmentations HERE
     # but perform processing in collate_fn
-
-    if split != "train":
-      return batch
-
     images_new = []
     objects_new = []
 
     for img, obj in zip(batch["image"], batch["objects"]):
-      img_augmented = augmentation(
+      img_augmented = augs[split](
         image=np.asarray(img.convert("RGB")),
         bboxes=obj["bbox"],
         captions=obj["caption"],
