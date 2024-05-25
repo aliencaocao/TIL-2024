@@ -7,9 +7,9 @@
 
 ## Models
 1. YOLOv9e
-https://drive.google.com/file/d/1EpI4Y7cbZrtwYEnEhKmdwrvDkFOcm-jZ
+https://drive.google.com/file/d/13VUjoienvWqHz9NB66KHDqL5Y0t3YCMN/view?usp=sharing
 ```shell
-gdown 1EpI4Y7cbZrtwYEnEhKmdwrvDkFOcm-jZ
+gdown 13VUjoienvWqHz9NB66KHDqL5Y0t3YCMN
 ```
 2. CLIP of choice (best so far is siglip-large-patch16-384)
 ```shell
