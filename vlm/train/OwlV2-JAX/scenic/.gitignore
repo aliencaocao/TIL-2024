@@ -1,0 +1,7 @@
+owlv2-jax-venv/
+*.egg-info
+build/
+data/*.zip
+data/**/*.jpg
+lvis/
+big_vision/
