@@ -37,14 +37,22 @@ gcloud ai models upload --region asia-southeast1 --display-name '12000sgd-multis
 3. Continue for 7 epochs with image size=1600 to improve on high-res and small object further since inference time we use 1600
 
 ### Training SigLIP using JAX
-Setup:
+Generate TensorFlow datasets:
+
+Run split ds notebook, then
 ```shell
+cd vlm\multistage\siglip\big_vision\datasets\til
+tfds build
+```
+Setup Env:
+```shell
+cd vlm/multistage/siglip
 pip install "jax[tpu]>=0.4.25" -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
 pip install -r big_vision/requirements.txt
 ```
 Train:
 ````shell
-TFDS_DATA_DIR=~/tensorflow_datasets BV_JAX_INIT=1 python3 -m big_vision.trainers.proj.image_text.siglip --config big_vision/configs/proj/image_text/siglip_til.py --workdir til_train
+TFDS_DATA_DIR=/kaggle/input/til-siglip-tfds BV_JAX_INIT=1 python3 -m big_vision.trainers.proj.image_text.siglip --config big_vision/configs/proj/image_text/siglip_til.py --workdir til_train
 ```
 
 
