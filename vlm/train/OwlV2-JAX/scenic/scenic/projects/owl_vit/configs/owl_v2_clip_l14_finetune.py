@@ -163,15 +163,17 @@ def get_config(init_mode='canonical_checkpoint'):
 
   # Training.
   config.num_training_steps = 10_000
-  config.batch_size = 32
+  config.batch_size = 128
   config.rng_seed = 0
 
   # Image backbone + head training configuration.
   sched = ml_collections.ConfigDict()
   sched.re = '(?!backbone/clip/text/.*)(.*)'  # Negative lookahead.
   sched.lr_configs = ml_collections.ConfigDict({  # Learning rate.
-      'learning_rate_schedule': 'rsqrt_decay',
-      'timescale': 10_000,
+      'learning_rate_schedule': 'compound',
+      'factors': 'rsqrt_decay',
+      'steps_per_cycle': config.get_ref('num_training_steps'),
+      'total_steps': config.get_ref('num_training_steps'),
       'warmup_steps': 0,  # Necessary for higher LR and large batch size.
       'base_learning_rate': 2e-5,
   })
@@ -180,8 +182,10 @@ def get_config(init_mode='canonical_checkpoint'):
   sched_txt = ml_collections.ConfigDict()
   sched_txt.re = '(backbone/clip/text/.*)'
   sched_txt.lr_configs = ml_collections.ConfigDict({
-      'learning_rate_schedule': 'rsqrt_decay',
-      'timescale': 10_000,
+      'learning_rate_schedule': 'compound',
+      'factors': 'rsqrt_decay',
+      'steps_per_cycle': config.get_ref('num_training_steps'),
+      'total_steps': config.get_ref('num_training_steps'),
       'warmup_steps': 0,  # Necessary for higher LR and large batch size.
       'base_learning_rate': 2e-6,
   })
