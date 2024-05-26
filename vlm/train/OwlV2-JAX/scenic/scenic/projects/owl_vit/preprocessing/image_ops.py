@@ -170,6 +170,17 @@ class RandomFlipLeftRight(RandomImagePreprocessOp):
     )
 
 
+@dataclasses.dataclass(frozen=True)
+class GaussianNoise(RandomImagePreprocessOp):
+    """Adds Gaussian noise to an image."""
+
+    stddev = tf.random.uniform(shape=[], minval=0., maxval=0.2, dtype=tf.float32)
+
+    def apply(self, image: tf.Tensor, seed: tf.Tensor) -> tf.Tensor:
+        noise = tf.random.stateless_normal(shape=tf.shape(image), mean=0., stddev=self.stddev, dtype=tf.float32, seed=seed)
+        return tf.clip_by_value(image + noise, 0.0, 1.0)
+
+
 class RandomCropBase(RandomImagePreprocessOp):
   """Randomly crops an image based on self._sample_random_crop_region."""
 
