@@ -221,8 +221,9 @@ def get_config(init_mode='canonical_checkpoint'):
           'Per example clipping only makes sense with local normalization')
 
   # Objectness head.
-  config.model.objectness_head = ml_collections.ConfigDict()
-  config.model.objectness_head.stop_gradient = True
+  config.model.objectness_head = None
+  # config.model.objectness_head = ml_collections.ConfigDict()
+  # config.model.objectness_head.stop_gradient = True
 
   # Init.
   config.init_from = ml_collections.ConfigDict()
