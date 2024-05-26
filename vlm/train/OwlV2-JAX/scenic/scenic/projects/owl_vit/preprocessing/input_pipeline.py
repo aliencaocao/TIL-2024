@@ -83,6 +83,7 @@ PRE_MOSAIC_OPS = tuple(
         image_ops.CropOrPadMetaData,
         image_ops.Drop,
         image_ops.Keep,
+        image_ops.GaussianNoise,
         image_ops.RandomCrop,
         image_ops.RandomFlipLeftRight,
         image_ops.ResizeWithPad,
