@@ -138,6 +138,8 @@ def get_config(init_mode='canonical_checkpoint'):
   # Model.
   config.model_name = 'text_zero_shot_detection'
 
+  config.matcher = 'hungarian_cover_tpu'
+
   config.model = ml_collections.ConfigDict()
   config.model.normalize = True
 
