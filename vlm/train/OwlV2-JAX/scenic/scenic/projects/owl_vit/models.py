@@ -407,6 +407,7 @@ class TextZeroShotDetectionModel(matching_base_models.ObjectDetectionModel):
   def build_flax_model(self) -> nn.Module:
     return TextZeroShotDetectionModule(
         body_configs=self.config.model.body,
+        objectness_head_configs=self.config.model.objectness_head,
         normalize=self.config.model.normalize,
         box_bias=self.config.model.box_bias)
 
