@@ -24,8 +24,8 @@ WORKDIR /workspace
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt && rm requirements.txt
 
-COPY CLIP-ViT-H-14-laion2B-s32B-b79K CLIP-ViT-H-14-laion2B-s32B-b79K
-COPY yolov9c_0.99_0.769.pt yolov9c_0.99_0.769.pt
+COPY siglip-large-patch16-384 siglip-large-patch16-384
+COPY yolov9e_0.995_0.823_epoch65.pt yolov9e_0.995_0.823_epoch65.pt
 
 COPY api_service.py api_service.py
 COPY VLMManager.py VLMManager.py

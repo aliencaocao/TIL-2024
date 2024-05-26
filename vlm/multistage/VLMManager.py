@@ -58,7 +58,7 @@ class VLMManager:
         images = [Image.open(io.BytesIO(b)) for b in img_bytes]
 
         # YOLO object det
-        yolo_result = self.yolo_model.predict(images, imgsz=1600, conf=0.365, iou=0.1, max_det=10, verbose=False)  # max F1, try augment=True and adjusting iou
+        yolo_result = self.yolo_model.predict(images, imgsz=1600, conf=0.1, iou=0.1, max_det=10, verbose=False, augment=True)
         yolo_result = [(r.boxes.xyxy.tolist(), r.boxes.conf.tolist()) for r in yolo_result]
         yolo_result = [tuple(zip(*r)) for r in yolo_result]  # list of tuple[box, conf] in each image in xyxy format
 
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     import orjson
     import base64
 
-    vlm_manager = VLMManager(yolo_path='yolov9c_0.99_0.769.pt', clip_path='CLIP-ViT-H-14-laion2B-s32B-b79K')
+    vlm_manager = VLMManager(yolo_path='yolov9e_0.995_0.823_epoch65.pt', clip_path='siglip-large-patch16-384')
     all_answers = []
 
     batch_size = 4
