@@ -173,7 +173,7 @@ def get_config(init_mode='canonical_checkpoint'):
   sched.re = '(?!backbone/clip/text/.*)(.*)'  # Negative lookahead.
   sched.lr_configs = ml_collections.ConfigDict({  # Learning rate.
       'learning_rate_schedule': 'compound',
-      'factors': 'rsqrt_decay',
+      'factors': 'constant*rsqrt_decay',
       'steps_per_cycle': config.get_ref('num_training_steps'),
       'total_steps': config.get_ref('num_training_steps'),
       'warmup_steps': 0,  # Necessary for higher LR and large batch size.
@@ -185,7 +185,7 @@ def get_config(init_mode='canonical_checkpoint'):
   sched_txt.re = '(backbone/clip/text/.*)'
   sched_txt.lr_configs = ml_collections.ConfigDict({
       'learning_rate_schedule': 'compound',
-      'factors': 'rsqrt_decay',
+      'factors': 'constant*rsqrt_decay',
       'steps_per_cycle': config.get_ref('num_training_steps'),
       'total_steps': config.get_ref('num_training_steps'),
       'warmup_steps': 0,  # Necessary for higher LR and large batch size.
