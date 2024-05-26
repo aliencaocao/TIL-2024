@@ -104,7 +104,7 @@ def get_config(init_mode='canonical_checkpoint'):
 
   # For best performance, the shuffle buffer should be large, e.g. 10_000, but
   # this will require >50GB RAM.
-  config.dataset_configs.shuffle_buffer_size = 750
+  config.dataset_configs.shuffle_buffer_size = 10_000
 
   config.dataset_configs.train = ml_collections.ConfigDict()
   config.dataset_configs.train.tfds_names = ['til']
@@ -224,5 +224,14 @@ def get_config(init_mode='canonical_checkpoint'):
   if checkpoint_path is None:
     raise ValueError('Unknown init_mode: {}'.format(init_mode))
   config.init_from.checkpoint_path = checkpoint_path
+
+  # Logging.
+  config.xprof = True  # Profile using xprof.
+  config.log_summary_steps = 100  # Train summary steps.
+  config.checkpoint = True  # Do checkpointing.
+  config.checkpoint_steps = 500
+  config.debug_train = False  # Debug mode during training.
+  config.debug_eval = False  # Debug mode during eval.
+  config.log_eval_steps = 500
 
   return config
