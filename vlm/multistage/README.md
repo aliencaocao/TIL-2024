@@ -36,7 +36,38 @@ gcloud ai models upload --region asia-southeast1 --display-name '12000sgd-multis
 2. Train for 55 epochs with AdamW, lr=1e-3, effective bs=64, image size=1280, cosine LR schedule
 3. Continue for 7 epochs with image size=1600 to improve on high-res and small object further since inference time we use 1600
 
-### Training SigLIP using JAX
+Albumentations:
+```python
+T = [
+    A.GaussNoise(var_limit=2500, p=0.5),
+    A.Flip(p=0.5),
+    A.Blur(p=0.1),
+    A.MedianBlur(p=0.1),
+    A.ToGray(p=0.1),
+    A.CLAHE(p=0.1),
+    A.RandomBrightnessContrast(p=0.5),
+    A.RandomGamma(p=0.2),
+    A.ImageCompression(quality_lower=75, p=0.5),
+]
+```
+
+### Training SigLIP using HF
+1. Copy modeling_siglip.py from https://github.com/huggingface/transformers/blob/bdb9106f247fca48a71eb384be25dbbd29b065a8/src/transformers/models/siglip/modeling_siglip.py
+2. Add loss func adapted from JAX in https://github.com/google-research/big_vision/blob/01edb81a4716f93a48be43b3a4af14e29cdb3a7f/big_vision/trainers/proj/image_text/siglip.py#L287 to https://github.com/huggingface/transformers/blob/bdb9106f247fca48a71eb384be25dbbd29b065a8/src/transformers/models/siglip/modeling_siglip.py#L1230
+```python
+if return_loss:
+    eye = torch.eye(logits_per_text.size(0), device=logits_per_text.device)
+    m1_diag1 = -torch.ones_like(logits_per_text) + 2 * eye
+    loglik = torch.nn.functional.logsigmoid(m1_diag1 * logits_per_text)
+    nll = -torch.sum(loglik, dim=-1)
+    loss = nll.mean()
+```
+3. Multi-GPU training using FDSP:
+```shell
+CUDA_VISIBLE_DEVICES=0,1,4,5,6 accelerate launch HF_train.py
+```
+
+### ~~Training SigLIP using JAX~~ Did not get to work, using HF with custom loss instead
 Generate TensorFlow datasets:
 
 Run split ds notebook, then
@@ -56,12 +87,16 @@ TFDS_DATA_DIR=/kaggle/input/til-siglip-tfds BV_JAX_INIT=1 python3 -m big_vision.
 ```
 
 
-### General takeaways
-- Val and test correlation on CLIPs are not reliable beyond 0.8 mAP.
+### Takeaways
+- Val and test correlation on CLIPs are not reliable beyond 0.8 mAP due to lack of noisy val data
 - Upscaling is always bad even though they do result in a clearer segregation of scores in CLIPs. To be investigated.
 - SAHI (slicing inference) on YOLO is not suitable for this task despite it being designed for small objects detection.
-- GaussianNoise augmentations significantly improve test scores
-
+- Strong (var=2500) GaussianNoise augmentations significantly improve test performance of YOLO
+- Reason why CLIP-ViT-H and Metaclip-H significantly outperform siglip in local but significantly **underperform** siglip on test:
+1. CLIP-ViT uses softmax as loss. It's learning objective is given **multiple** captions and classifiy them. This means while the model CAN, it does not learn fully the features useful for a single-caption task, which is what is test and not val.
+2. SigLIP on the other hand, uses Sigmoid as loss, which operates on a single one-to-one caption-image pair. This means the model is more suited for the task at hand, despite a smaller scale than H variants.
+- Isolate the 2 tasks and evaluate separately on leaderboard: use pretrained SigLIP and iterate on YOLO until max, then turn to SigLIP.
+- Large BS works a lot better for SigLIP
 
 ### Evaluation
 
@@ -169,6 +204,129 @@ conf=0.1 no aug:
 both val and test slightly better than epoch62. TTA improves unlike other checkpoints. The improvement in score is not worth the time from augs for quals
 
 
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-epoch1
+conf=0.1 val set 0.9694415173867229
+
+test set:
+
+conf=0.1 aug:
+- Accuracy: 0.846
+- Speed Score: 0.6200159431481481
+
+**ALL SIGLIP FINETUNES ARE TRAINED ON FULL TRAIN SET, NO VAL SET**
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch2
+Train loss was high, likely due to initial lr to high (1e-4)
+val set 0.7290129961362838
+
+not testing
+
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch3
+bs=12, no grad accum, effective bs 60
+
+val set 0.9903407095187917
+
+test set:
+
+conf=0.1 aug:
+- Accuracy: 0.823
+- Speed Score: 0.6942834481481481
+
+BS hurting it.
+
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch4
+bs=12, no grad accum, effective bs 60
+
+val set 0.9912188268352652
+
+test set:
+
+conf=0.1 aug:
+- Accuracy: 0.79
+- Speed Score: 0.7004231074074074
+
+BS hurting it.
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch10
+bs=12, no grad accum, effective bs 60
+
+val set 0.9912188268352652
+
+test set:
+
+conf=0.1 aug:
+- Accuracy: 0.836
+- Speed Score: 0.7017661998148148
+
+BS hurting it but training longer helps
+
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch5
+Models trained on 3090 cluster has bs=12, grad accum=16 = effective bs 960.
+
+val set 0.9899894625922023
+
+test set:
+
+conf=0.1 aug:
+- Accuracy: 0.864
+- Speed Score: 0.6763070722222222
+
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-epoch10
+Models trained on 3090 cluster has bs=12, grad accum=16 = effective bs 960. With strong augs, final train loss 2.8 (high!)
+
+```python
+        self.albu_transforms = A.Compose([
+            A.GaussNoise(var_limit=2500, p=0.5),
+            A.Flip(p=0.5),
+            A.RandomRotate90(p=0.5),
+            A.Blur(p=0.1),
+            A.ToGray(p=0.1),
+            A.CLAHE(p=0.1),
+            A.RandomBrightnessContrast(brightness_limit=0.4, contrast_limit=0.5, p=0.5),
+            A.RandomGamma(p=0.2),
+            A.Affine(scale=(0.8, 1.2), p=0.2),
+            A.Perspective(p=0.5),
+            A.ImageCompression(quality_lower=75, p=0.5),
+            ToTensorV2()  # change back to CHW here
+        ])
+```
+
+val set 0.662978573937478
+
+test set:
+
+conf=0.1 aug:
+- Accuracy: 0.643
+- Speed Score: 0.6780248025925926
+
+Due to non normalized GaussianNoise, the model is screwed
+
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-epoch10
+Models trained on 3090 cluster has bs=12, grad accum=16 = effective bs 960. With FIXED augs (gaussian noise was not normalized)
+
+```python
+        self.albu_transforms = A.Compose([
+            A.GaussNoise(var_limit=2500/255/255, p=0.5),  # normalize
+            A.Flip(p=0.5),
+            A.RandomRotate90(p=0.5),
+            A.Blur(p=0.1),
+            A.ToGray(p=0.1),
+            A.CLAHE(p=0.1),
+            A.RandomBrightnessContrast(brightness_limit=0.4, contrast_limit=0.5, p=0.5),
+            A.RandomGamma(p=0.2),
+            A.Affine(scale=(0.8, 1.2), p=0.2),
+            A.Perspective(p=0.5),
+            A.ImageCompression(quality_lower=75, p=0.5),
+            ToTensorV2()  # change back to CHW here
+        ])
+```
+
+
 #### YOLOv9e 0.995 0.823 epoch67 iou=0.1 + siglip-large-patch16-384
 this is the last checkpoint with lowest loss but likely overfitted
 
@@ -181,8 +339,8 @@ conf=0.1 aug:
 - Speed Score: 0.7026901435185186
 
 conf=0.1 no aug:
-submitted but didnt receive score msg due to discord bot issue, but likely worse than epoch 62
-
+- Accuracy: 0.776
+- Speed Score: 0.7372752572222223
 
 val map slightly better than epoch65 but test is worse than epoch 62
 
@@ -358,10 +516,5 @@ Conclusion: pre_pad 1 or 10 dont make much diff, but speed increase VS acc impro
 
 
 ## TODO
-1. Train YOLOv9c with 1600 resolution (now is 640 but infer at 1600 still helps)
-2. Train YOLOv9c with noise augmentations
-3. Manual impl slicing inference (batched) for YOLO to detect small objects, tried yolo-patched-inference and it sucks
-4. Try speed diff of pipeline VS openclip
-5. Eval YOLOv9c with augment=true on inference
-6. Try google/siglip-large-patch16-256 on val
-7. Try google/siglip-large-patch16-384 on val
+1. Manual impl slicing inference (batched) for YOLO to detect small objects, tried yolo-patched-inference and it sucks
+2. Try speed diff of pipeline VS openclip

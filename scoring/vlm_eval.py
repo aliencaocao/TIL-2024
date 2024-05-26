@@ -63,7 +63,7 @@ if __name__ == "__main__":
     with open('../data/vlm.jsonl', 'r') as f:
         labels = [orjson.loads(line.strip()) for line in f if line.strip() != ""]
 
-    with open('../vlm/multistage/evals/yolov9e-1600-epoch67-conf0.1-siglip-large-patch16-384-zeroshot.json', 'r') as f:
+    with open('../vlm/multistage/evals/yolov9e-1600-epoch65-conf0.1-siglip-large-patch16-384-ft-3090-ep10-aug.json', 'r') as f:
         predictions = orjson.loads(f.read())
     labels = labels[-len(predictions):]
     """

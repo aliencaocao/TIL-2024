@@ -14,10 +14,12 @@ from transformers import (
     EvalPrediction
 )
 from modeling_siglip import SiglipModel
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
-pretrained_model_path = "../siglip-large-patch16-384"
+pretrained_model_path = "google/siglip-large-patch16-384"
 
-model = SiglipModel.from_pretrained(pretrained_model_path).to('cuda')
+model = SiglipModel.from_pretrained(pretrained_model_path)
 processor = AutoProcessor.from_pretrained(pretrained_model_path)
 # tokenizer = AutoTokenizer.from_pretrained(pretrained_model_path)
 # image_processor = AutoImageProcessor.from_pretrained(pretrained_model_path)
@@ -25,12 +27,15 @@ config = model.config
 
 # split the ds into train and val. the image column is in format "image_1234_1.jpg". Take 1234 as the image id. Check if the id is smaller than 4086. If yes, put this in train, else in val.
 def get_ds():
+    # If error about missing name, use datasets==2.15.0
     dataset = load_dataset(path='.', data_files="til_siglip_ds.json")
-    train_dataset = dataset.filter(lambda example: int(example["image"].split("_")[1]) < 4086)
-    val_dataset = dataset.filter(lambda example: int(example["image"].split("_")[1]) >= 4086)
-    return train_dataset, val_dataset
+    # train_dataset = dataset.filter(lambda example: int(example["image"].split("_")[1]) < 4086)
+    # val_dataset = dataset.filter(lambda example: int(example["image"].split("_")[1]) >= 4086)
+    # return train_dataset, val_dataset
+    return dataset
 
-train_dataset, val_dataset = get_ds()
+# train_dataset, val_dataset = get_ds()
+train_dataset = get_ds()
 
 class Transform(torch.nn.Module):
     def __init__(self, image_size, mean, std):
@@ -38,14 +43,32 @@ class Transform(torch.nn.Module):
         self.transforms = torch.nn.Sequential(
             Resize([image_size], interpolation=InterpolationMode.NEAREST),  # lesson from TIL 2023: https://github.com/aliencaocao/TIL-2023?tab=readme-ov-file#finals-specific-tuning-2
             CenterCrop(image_size),
-            ConvertImageDtype(torch.float16),
+            ConvertImageDtype(torch.float32),
             Normalize(mean, std),
         )
+        self.albu_transforms = A.Compose([
+            A.GaussNoise(var_limit=2500/255/255, p=0.5),  # normalize
+            A.Flip(p=0.5),
+            A.RandomRotate90(p=0.5),
+            A.Blur(p=0.1),
+            A.ToGray(p=0.1),
+            A.CLAHE(p=0.1),
+            A.RandomBrightnessContrast(brightness_limit=0.4, contrast_limit=0.5, p=0.5),
+            A.RandomGamma(p=0.2),
+            A.Affine(scale=(0.8, 1.2), p=0.2),
+            A.Perspective(p=0.5),
+            A.ImageCompression(quality_lower=75, p=0.5),
+            ToTensorV2()  # change back to CHW here
+        ])
 
     def forward(self, x) -> torch.Tensor:
         """`x` should be an instance of `PIL.Image.Image`"""
         with torch.no_grad():
             x = self.transforms(x)
+            # convert to numpy for albumentations
+            x = x.type(torch.uint8).permute(1, 2, 0).numpy()
+            x = self.albu_transforms(image=x)['image']
+            x = x.float()
         return x
 
 # For preprocessing the datasets.
@@ -53,8 +76,7 @@ class Transform(torch.nn.Module):
 image_transformations = Transform(
     config.vision_config.image_size, processor.image_processor.image_mean, processor.image_processor.image_std
 )
-image_transformations = torch.jit.script(image_transformations)
-
+# image_transformations = torch.jit.script(image_transformations)
 
 def preprocess_dataset(dataset):
     # Preprocessing the datasets.
@@ -65,7 +87,6 @@ def preprocess_dataset(dataset):
     # 6. Get the column names for input/target.
     image_column = "image"
     caption_column = "label"
-    dataset_columns = (image_column, caption_column)
 
     # Preprocessing the datasets.
     # We need to tokenize input captions and transform the images.
@@ -92,7 +113,7 @@ def preprocess_dataset(dataset):
     return data
 
 train_dataset = preprocess_dataset(train_dataset)
-val_dataset = preprocess_dataset(val_dataset)
+# val_dataset = preprocess_dataset(val_dataset)
 
 def collate_fn(examples):
     pixel_values = torch.stack([example["pixel_values"] for example in examples])
@@ -115,40 +136,41 @@ training_args = TrainingArguments(
     learning_rate=2e-5,
     warmup_ratio=0.1,
     weight_decay=1e-4,
-    per_device_train_batch_size=4,
+    per_device_train_batch_size=12,
     remove_unused_columns=False,
     output_dir="siglip-finetune",
-    per_device_eval_batch_size=1,
+    #per_device_eval_batch_size=1,
     gradient_accumulation_steps=16,
     adam_beta1=0.9,
     adam_beta2=0.99,  # decrease from 0.999
-    num_train_epochs=20,
+    num_train_epochs=10,
     lr_scheduler_type="cosine",
-    logging_strategy="epoch",
-    save_strategy="epoch",
-    eval_strategy="epoch",
+    logging_strategy="steps",
+    logging_steps=10,
+    save_strategy="steps",
+    save_steps=0.9999,
+    # eval_strategy="epoch",  # eval bugged causing oom
     save_total_limit=5,
     bf16=torch.cuda.is_bf16_supported(),
     bf16_full_eval=torch.cuda.is_bf16_supported(),
     fp16=not torch.cuda.is_bf16_supported(),
     fp16_full_eval=not torch.cuda.is_bf16_supported(),
     tf32=True,
-    dataloader_num_workers=4 if sys.platform == 'linux' else 0,  # no work on windows
-    load_best_model_at_end=True,
-    metric_for_best_model='F1',
-    greater_is_better=True,
-    # optim='adamw_torch_fused',
-    optim='adafactor',
-    # resume_from_checkpoint=False,
+    # load_best_model_at_end=True,
+    # metric_for_best_model='F1',
+    # greater_is_better=True,
+    optim='adamw_torch_fused',
+    # optim='adafactor',
+    #resume_from_checkpoint='siglip-finetune/epoch5',
     report_to='none',
-    gradient_checkpointing=True,
+    gradient_checkpointing=False,
     torch_compile = sys.platform == 'linux',
 )
 trainer = Trainer(
     model=model,
     args=training_args,
     train_dataset=train_dataset,
-    eval_dataset=val_dataset,
+    # eval_dataset=val_dataset,
     data_collator=collate_fn,
     compute_metrics=compute_metrics
 )
