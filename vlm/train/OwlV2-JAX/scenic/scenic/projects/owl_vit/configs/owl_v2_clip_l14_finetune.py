@@ -165,7 +165,7 @@ def get_config(init_mode='canonical_checkpoint'):
 
   # Training.
   config.num_training_steps = 10_000
-  config.batch_size = 32
+  config.batch_size = 12
   config.rng_seed = 0
 
   # Image backbone + head training configuration.
