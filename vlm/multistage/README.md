@@ -82,7 +82,7 @@ pip install "jax[tpu]>=0.4.25" -f https://storage.googleapis.com/jax-releases/li
 pip install -r big_vision/requirements.txt
 ```
 Train:
-````shell
+```shell
 TFDS_DATA_DIR=/kaggle/input/til-siglip-tfds BV_JAX_INIT=1 python3 -m big_vision.trainers.proj.image_text.siglip --config big_vision/configs/proj/image_text/siglip_til.py --workdir til_train
 ```
 
