@@ -51,11 +51,6 @@ def get_config() -> ml_collections.ConfigDict:
   config.grad_clip_configs.clip_value = 1.0
 
   config.kb_dataset_names = ['wit_table', 'cc12m_table', 'vqa_table']
-  # config.kb_dataset_configs = [{
-  #     'train_split': 'train'
-  # }, {
-  #     'train_split': 'full[:%d]' % (25000 * n_device)
-  # }, {}]
   config.kb_dataset_configs = [{}, {}, {}]
 
   config.batch_size = batch_size
@@ -78,11 +73,11 @@ def get_config() -> ml_collections.ConfigDict:
   config.model.retr_k = 10
   config.model.retr_data_ratio = 0.2
   config.model.label_smoothing = 1e-2
-  config.model.vit_name = 'g/14'
-  config.model.vit_model_path = 'JFT3b-g/14'
+  config.model.vit_name = 'G/14'
+  config.model.vit_model_path = 'JFT3b-G/14'
   # [JFT3b-B/32, JFT3b-B/16, JFT3b-L/16, JFT3b-g/14, JFT3b-G/14]
   config.model.t5_frozen_base = False
-  config.model.vit_num_frozen_layers = 4 / 5
+  config.model.vit_num_frozen_layers = 5 / 6
   config.model.retrieve_local = False
   config.model.use_psudo_retr = True
   config.model.disentangle = True

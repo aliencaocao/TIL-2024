@@ -25,7 +25,7 @@ def get_config() -> ml_collections.ConfigDict:
   config.experiment_name = 'image_caption_debug'
 
   config.optimizer = 'adafactor'
-  batch_size = 8 * 2 * 128
+  batch_size = 5 * 2 * 256
   config.optimizer_configs = ml_collections.ConfigDict()
   config.optimizer_configs.momentum = None
   config.optimizer_configs.weight_decay_rate = 1e-2
@@ -68,9 +68,9 @@ def get_config() -> ml_collections.ConfigDict:
   config.model.in_batch_neg = True
   config.model.retrieval_ratio = 1 / 2
   config.model.label_smoothing = 1e-2
-  config.model.vit_name = 'g/14'
-  config.model.vit_model_path = 'JFT3b-g/14'
-  config.model.vit_num_frozen_layers = 0.5
+  config.model.vit_name = 'G/14'
+  config.model.vit_model_path = 'JFT3b-G/14'
+  config.model.vit_num_frozen_layers = 0.6
   # [JFT3b-B/32, JFT3b-B/16, JFT3b-L/16, JFT3b-g/14, JFT3b-G/14]
 
   # Dataset.
@@ -88,7 +88,7 @@ def get_config() -> ml_collections.ConfigDict:
   config.lr_configs.warmup_steps = int(0.1 * config.lr_configs.total_steps)
   config.lr_configs.timescale = 5000
   # config.lr_configs.steps_per_cycle = config.lr_configs.total_steps
-  config.lr_configs.base_learning_rate = 4e-4
+  config.lr_configs.base_learning_rate = 3e-4
   config.lr_configs.end_learning_rate = 1e-6
 
   # Logging.
