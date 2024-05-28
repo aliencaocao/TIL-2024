@@ -1,0 +1,156 @@
+services:
+  til-competition:
+    build: ./
+    image: til_competition:v0.0.1
+    environment:
+      - TEAM_NAME=${TEAM_NAME}
+    container_name: til-competition
+    ports:
+      - ${COMPETITION_SERVER_PORT}:${COMPETITION_SERVER_PORT}
+    ulimits:
+      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+    shm_size: 32gb
+    command: uvicorn test_competition_server:app --host 0.0.0.0 --port ${COMPETITION_SERVER_PORT}
+    healthcheck:
+      test: curl -f http://localhost:${COMPETITION_SERVER_PORT}/health || exit 1
+      interval: 5s
+      timeout: 30s
+      retries: 5
+      start_period: 3s
+  til-main:
+    build: main/
+    image: til_main:v0.0.1
+    environment:
+      - COMPETITION_SERVER_IP=${COMPETITION_SERVER_IP}
+      - COMPETITION_SERVER_PORT=${COMPETITION_SERVER_PORT}
+      - TEAM_NAME=${TEAM_NAME}
+      - LOCAL_IP=${LOCAL_IP}
+    container_name: til-main
+    ulimits:
+      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+    shm_size: 32gb # set upper limit for how much shared memory container can use
+    depends_on:
+      til-competition:
+        condition: service_healthy
+        restart: true
+      til-asr:
+        condition: service_healthy
+        restart: true
+      til-nlp:
+        condition: service_healthy
+        restart: true
+      til-autonomy:
+        condition: service_healthy
+        restart: true
+      til-vlm:
+        condition: service_healthy
+        restart: true
+    command: ["python", "participant_server.py"]
+  til-asr:
+    build: asr/
+    image: til_asr:v0.0.1
+    container_name: til-asr
+    environment:
+      NVIDIA_VISIBLE_DEVICES: 0
+      CUDA_VISIBLE_DEVICES: 0
+    ports:
+      - 5001:5001
+    ulimits:
+      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+    shm_size: 32gb # set upper limit for how much shared memory container can use
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: ["uvicorn", "api_service:app", "--host", "0.0.0.0", "--port", "5001"]
+    healthcheck:
+      test: curl -f http://localhost:5001/health || exit 1
+      interval: 5s
+      timeout: 30s
+      retries: 5
+      start_period: 3s
+  til-nlp:
+    build: nlp/
+    image: til_nlp:v0.0.1
+    container_name: til-nlp
+    environment:
+      NVIDIA_VISIBLE_DEVICES: 0
+      CUDA_VISIBLE_DEVICES: 0
+    ports:
+      - 5002:5002
+    ulimits:
+      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+    shm_size: 32gb # set upper limit for how much shared memory container can use
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: ["uvicorn", "api_service:app", "--host", "0.0.0.0", "--port", "5002"]
+    healthcheck:
+      test: curl -f http://localhost:5002/health || exit 1
+      interval: 5s
+      timeout: 30s
+      retries: 5
+      start_period: 3s
+  til-autonomy:
+    build: autonomy/
+    image: til_autonomy:v0.0.1
+    stdin_open: true
+    tty: true
+    environment:
+      - COMPETITION_SERVER_IP=${COMPETITION_SERVER_IP}
+      - TEAM_NAME=${TEAM_NAME}
+      - ROBOT_SN=${ROBOT_SN}
+      - ROBOT_IP=${ROBOT_IP}
+      - LOCAL_IP=${LOCAL_IP}
+      - USE_ROBOT=${USE_ROBOT}
+    container_name: til-autonomy
+    ports:
+      - 5003:5003
+      - 10100-10500:10100-10500/udp
+    ulimits:
+      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+    shm_size: 32gb # set upper limit for how much shared memory container can use
+    command: ["uvicorn", "autonomy:app", "--host", "0.0.0.0", "--port", "5003"]
+    depends_on:
+      til-competition:
+        condition: service_healthy
+        restart: true
+    healthcheck:
+      test: curl -f http://localhost:5003/health || exit 1
+      interval: 5s
+      timeout: 30s
+      retries: 5
+      start_period: 3s
+  til-vlm:
+    build: vlm/
+    image: til_vl:v0.0.1
+    container_name: til-vlm
+    environment:
+      NVIDIA_VISIBLE_DEVICES: 0
+      CUDA_VISIBLE_DEVICES: 0
+    ports:
+      - 5004:5004
+    ulimits:
+      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+    shm_size: 32gb # set upper limit for how much shared memory container can use
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: ["uvicorn", "api_service:app", "--host", "0.0.0.0", "--port", "5004"]
+    healthcheck:
+      test: curl -f http://localhost:5004/health || exit 1
+      interval: 5s
+      timeout: 30s
+      retries: 5
+      start_period: 3s

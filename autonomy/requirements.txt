@@ -1,0 +1,6 @@
+opencv-python
+numpy
+fastapi
+websockets
+robomaster
+uvicorn[standard]
