@@ -311,8 +311,8 @@ conf=0.1 aug:
 Due to non normalized GaussianNoise, the model is screwed
 
 
-#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-epoch10
-Models trained on 2x3090, per gpu bs=10, grad accum=48 = effective bs 960. With FIXED augs (gaussian noise was not normalized)
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-epoch10 fixed
+Models trained on 5x3090, per gpu bs=12, grad accum=16 = effective bs 960. With FIXED augs (gaussian noise was not normalized)
 
 ```python
 self.albu_transforms = A.Compose([
@@ -341,7 +341,7 @@ conf=0.1 aug:
 
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-epoch30-v2
-Models trained on 3090 cluster has bs=12, grad accum=16 = effective bs 960. With less augs.
+Models trained on 2x3090, per gpu bs=10, grad accum=48 = effective bs 960. With less augs.
 
 ```python
 self.albu_transforms = A.Compose([
