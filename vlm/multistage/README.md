@@ -228,7 +228,7 @@ not testing
 
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch3
-bs=12, no grad accum, effective bs 60
+5x3090, per gpu bs=12, no grad accum, effective bs 60
 
 val set 0.9903407095187917
 
@@ -242,7 +242,7 @@ BS hurting it.
 
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch4
-bs=12, no grad accum, effective bs 60
+5x3090, per gpu bs=12, no grad accum, effective bs 60
 
 val set 0.9912188268352652
 
@@ -255,7 +255,7 @@ conf=0.1 aug:
 BS hurting it.
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch10
-bs=12, no grad accum, effective bs 60
+5x3090, per gpu bs=12, no grad accum, effective bs 60
 
 val set 0.9912188268352652
 
@@ -269,7 +269,7 @@ BS hurting it but training longer helps
 
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch5
-Models trained on 3090 cluster has bs=12, grad accum=16 = effective bs 960.
+Models trained on 5x3090, per gpu bs=12, grad accum=16 = effective bs 960.
 
 val set 0.9899894625922023
 
@@ -281,7 +281,7 @@ conf=0.1 aug:
 
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-epoch10
-Models trained on 3090 cluster has bs=12, grad accum=16 = effective bs 960. With strong augs, final train loss 2.8 (high!)
+Models trained on 5x3090, per gpu bs=12, grad accum=16 = effective bs 960. With strong augs, final train loss 2.8 (high!)
 
 ```python
 self.albu_transforms = A.Compose([
@@ -312,7 +312,7 @@ Due to non normalized GaussianNoise, the model is screwed
 
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-epoch10
-Models trained on 3090 cluster has bs=12, grad accum=16 = effective bs 960. With FIXED augs (gaussian noise was not normalized)
+Models trained on 2x3090, per gpu bs=10, grad accum=48 = effective bs 960. With FIXED augs (gaussian noise was not normalized)
 
 ```python
 self.albu_transforms = A.Compose([
@@ -340,8 +340,8 @@ conf=0.1 aug:
 - Speed Score: 0.6066626014814815
 
 
-#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-epoch10-v2
-Models trained on 3090 cluster has bs=12, grad accum=16 = effective bs 960. With less augs
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-epoch30-v2
+Models trained on 3090 cluster has bs=12, grad accum=16 = effective bs 960. With less augs.
 
 ```python
 self.albu_transforms = A.Compose([
