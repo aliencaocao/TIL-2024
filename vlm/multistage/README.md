@@ -30,6 +30,11 @@ docker tag 12000sgd-multistage-vlm asia-southeast1-docker.pkg.dev/dsta-angelhack
 docker push asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-multistage-vlm:yolo-siglip-large-patch16-384-conf0.1
 gcloud ai models upload --region asia-southeast1 --display-name '12000sgd-multistage-yolov9e-last-siglip-large-patch16-384-conf0.1-vlm' --container-image-uri asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-multistage-vlm:yolo-siglip-large-patch16-384-conf0.1 --container-health-route /health --container-predict-route /identify --container-ports 5004 --version-aliases default
 ```
+Finals submission:
+```shell
+docker tag 12000sgd-nlp asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-vlm:finals
+docker push asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-vlm:finals
+```
 
 ### Training YOLO
 1. Initialize from YOLOv9e checkpoint
@@ -310,21 +315,29 @@ Due to non normalized GaussianNoise, the model is screwed
 Models trained on 3090 cluster has bs=12, grad accum=16 = effective bs 960. With FIXED augs (gaussian noise was not normalized)
 
 ```python
-        self.albu_transforms = A.Compose([
-            A.GaussNoise(var_limit=2500/255/255, p=0.5),  # normalize
-            A.Flip(p=0.5),
-            A.RandomRotate90(p=0.5),
-            A.Blur(p=0.1),
-            A.ToGray(p=0.1),
-            A.CLAHE(p=0.1),
-            A.RandomBrightnessContrast(brightness_limit=0.4, contrast_limit=0.5, p=0.5),
-            A.RandomGamma(p=0.2),
-            A.Affine(scale=(0.8, 1.2), p=0.2),
-            A.Perspective(p=0.5),
-            A.ImageCompression(quality_lower=75, p=0.5),
-            ToTensorV2()  # change back to CHW here
-        ])
+self.albu_transforms = A.Compose([
+    A.GaussNoise(var_limit=2500/255/255, p=0.5),  # normalize
+    A.Flip(p=0.5),
+    A.RandomRotate90(p=0.5),
+    A.Blur(p=0.1),
+    A.ToGray(p=0.1),
+    A.CLAHE(p=0.1),
+    A.RandomBrightnessContrast(brightness_limit=0.4, contrast_limit=0.5, p=0.5),
+    A.RandomGamma(p=0.2),
+    A.Affine(scale=(0.8, 1.2), p=0.2),
+    A.Perspective(p=0.5),
+    A.ImageCompression(quality_lower=75, p=0.5),
+    ToTensorV2()  # change back to CHW here
+])
 ```
+
+val set 0.7298911134527573
+
+test set:
+
+conf=0.1 aug:
+- Accuracy: 0.674
+- Speed Score: 0.6066626014814815
 
 
 #### YOLOv9e 0.995 0.823 epoch67 iou=0.1 + siglip-large-patch16-384

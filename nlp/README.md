@@ -19,6 +19,11 @@ docker tag 12000sgd-nlp asia-southeast1-docker.pkg.dev/dsta-angelhack/repository
 docker push asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-nlp:latest
 gcloud ai models upload --region asia-southeast1 --display-name '12000sgd-nlp' --container-image-uri asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-nlp:latest --container-health-route /health --container-predict-route /extract --container-ports 5002 --version-aliases default
 ```
+Finals submission:
+```shell
+docker tag 12000sgd-nlp asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-nlp:finals
+docker push asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-nlp:finals
+```
 
 # ExLlamaV2
 1. [Download](https://drive.google.com/file/d/1VLaP60DxsysOVPCQGFHGR8AR67hzhML6/view) OR Build wheel on Linux and T4 (same as docker runtime)
