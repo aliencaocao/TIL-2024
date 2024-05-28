@@ -3,4 +3,5 @@ uvicorn[standard]
 orjson
 pydantic >= 2.0
 tokenizers  # required by exllamav2
-# exllamav2 install from self-built wheel
+flash_attn @ https://github.com/Dao-AILab/flash-attention/releases/download/v2.5.9.post1/flash_attn-2.5.9.post1+cu122torch2.3cxx11abiFALSE-cp310-cp310-linux_x86_64.whl  # required by exllamav2 0.1.0+ for paged attention
+exllamav2 @ https://github.com/turboderp/exllamav2/releases/download/v0.1.1/exllamav2-0.1.1+cu121.torch2.3.0-cp310-cp310-linux_x86_64.whl

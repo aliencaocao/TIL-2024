@@ -25,9 +25,6 @@ WORKDIR /workspace
 # install other requirements
 COPY requirements.txt .
 RUN pip install -r requirements.txt
-COPY exllamav2-0.0.21-cp310-cp310-linux_x86_64.whl /exllamav2-0.0.21-cp310-cp310-linux_x86_64.whl
-RUN pip install /exllamav2-0.0.21-cp310-cp310-linux_x86_64.whl
-RUN rm /exllamav2-0.0.21-cp310-cp310-linux_x86_64.whl
 
 RUN pip cache purge
 RUN apt-get clean autoclean
