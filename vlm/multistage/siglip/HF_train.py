@@ -1,3 +1,6 @@
+import os
+os.environ["WANDB_PROJECT"] = "TIL2024"
+
 import torch
 from datasets import load_dataset
 from PIL import Image
@@ -47,15 +50,13 @@ class Transform(torch.nn.Module):
             Normalize(mean, std),
         )
         self.albu_transforms = A.Compose([
-            A.GaussNoise(var_limit=2500/255/255, p=0.5),  # normalize
+            A.GaussNoise(var_limit=500 / 255 / 255, p=0.5),  # normalize
+            A.MultiplicativeNoise(p=0.5),
             A.Flip(p=0.5),
             A.RandomRotate90(p=0.5),
-            A.Blur(p=0.1),
-            A.ToGray(p=0.1),
             A.CLAHE(p=0.1),
-            A.RandomBrightnessContrast(brightness_limit=0.4, contrast_limit=0.5, p=0.5),
+            A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.5, p=0.5),
             A.RandomGamma(p=0.2),
-            A.Affine(scale=(0.8, 1.2), p=0.2),
             A.Perspective(p=0.5),
             A.ImageCompression(quality_lower=75, p=0.5),
             ToTensorV2()  # change back to CHW here
@@ -143,7 +144,7 @@ training_args = TrainingArguments(
     gradient_accumulation_steps=16,
     adam_beta1=0.9,
     adam_beta2=0.99,  # decrease from 0.999
-    num_train_epochs=10,
+    num_train_epochs=30,
     lr_scheduler_type="cosine",
     logging_strategy="steps",
     logging_steps=10,
@@ -162,7 +163,8 @@ training_args = TrainingArguments(
     optim='adamw_torch_fused',
     # optim='adafactor',
     #resume_from_checkpoint='siglip-finetune/epoch5',
-    report_to='none',
+    report_to='wandb',
+    run_name="weak-aug-30epoch",
     gradient_checkpointing=False,
     torch_compile = sys.platform == 'linux',
 )

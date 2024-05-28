@@ -284,20 +284,20 @@ conf=0.1 aug:
 Models trained on 3090 cluster has bs=12, grad accum=16 = effective bs 960. With strong augs, final train loss 2.8 (high!)
 
 ```python
-        self.albu_transforms = A.Compose([
-            A.GaussNoise(var_limit=2500, p=0.5),
-            A.Flip(p=0.5),
-            A.RandomRotate90(p=0.5),
-            A.Blur(p=0.1),
-            A.ToGray(p=0.1),
-            A.CLAHE(p=0.1),
-            A.RandomBrightnessContrast(brightness_limit=0.4, contrast_limit=0.5, p=0.5),
-            A.RandomGamma(p=0.2),
-            A.Affine(scale=(0.8, 1.2), p=0.2),
-            A.Perspective(p=0.5),
-            A.ImageCompression(quality_lower=75, p=0.5),
-            ToTensorV2()  # change back to CHW here
-        ])
+self.albu_transforms = A.Compose([
+    A.GaussNoise(var_limit=2500, p=0.5),
+    A.Flip(p=0.5),
+    A.RandomRotate90(p=0.5),
+    A.Blur(p=0.1),
+    A.ToGray(p=0.1),
+    A.CLAHE(p=0.1),
+    A.RandomBrightnessContrast(brightness_limit=0.4, contrast_limit=0.5, p=0.5),
+    A.RandomGamma(p=0.2),
+    A.Affine(scale=(0.8, 1.2), p=0.2),
+    A.Perspective(p=0.5),
+    A.ImageCompression(quality_lower=75, p=0.5),
+    ToTensorV2()  # change back to CHW here
+])
 ```
 
 val set 0.662978573937478
@@ -338,6 +338,25 @@ test set:
 conf=0.1 aug:
 - Accuracy: 0.674
 - Speed Score: 0.6066626014814815
+
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-epoch10-v2
+Models trained on 3090 cluster has bs=12, grad accum=16 = effective bs 960. With less augs
+
+```python
+self.albu_transforms = A.Compose([
+    A.GaussNoise(var_limit=500/255/255, p=0.5),  # normalize
+    A.MultiplicativeNoise(p=0.5),
+    A.Flip(p=0.5),
+    A.RandomRotate90(p=0.5),
+    A.CLAHE(p=0.1),
+    A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.5, p=0.5),
+    A.RandomGamma(p=0.2),
+    A.Perspective(p=0.5),
+    A.ImageCompression(quality_lower=75, p=0.5),
+    ToTensorV2()  # change back to CHW here
+])
+```
 
 
 #### YOLOv9e 0.995 0.823 epoch67 iou=0.1 + siglip-large-patch16-384
