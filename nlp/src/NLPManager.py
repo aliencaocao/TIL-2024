@@ -208,13 +208,16 @@ class NLPManager:
 
 if __name__ == "__main__":
     from tqdm import tqdm
+    import time
     # model_name = 'gorilla-openfunctions-v2-5.0bpw-h6-exl2'
     model_name = 'gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2-5.0bpw-h6-exl2'
     nlp_manager = NLPManager(f"models/{model_name}/")
+    # start = time.perf_counter()
     # result = nlp_manager.qa(['Control addressing air defense turrets, prepare to deploy surface-to-air missiles. Heading zero five five. I repeat, heading zero five five. Target identified as yellow, orange, and green helicopter. Engage and neutralize the threat. Over.',
     #                          'Control here, deploy an electromagnetic pulse (EMP) in the heading of three four five to neutralize the green fighter jet.',
     #                          'Control to all turrets, I repeat, Control to all turrets. Deploy anti-air artillery towards heading three zero five. Target is green, red, and purple missile. I need immediate response, over.',
     #                          'Control to air defense turrets, I repeat, Control to air defense turrets. Deploy EMP tool against the purple, blue, and silver helicopter at heading zero one five. Engage target immediately. Over.'])
+    # print(time.perf_counter() - start)
     # print(result)
     # exit()
     all_answers = []
