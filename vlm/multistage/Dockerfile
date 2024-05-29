@@ -24,16 +24,17 @@ WORKDIR /workspace
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt && rm requirements.txt
 
-COPY siglip-large-patch16-384-ft siglip-large-patch16-384-ft
-COPY yolov9e_0.995_0.823_epoch65.pt yolov9e_0.995_0.823_epoch65.pt
-
-COPY api_service.py api_service.py
-COPY VLMManager.py VLMManager.py
-
 # clear cache and unnecessary files
 RUN pip cache purge
 RUN apt-get clean autoclean
 RUN apt-get autoremove --yes
 RUN rm -rf /var/lib/{apt,dpkg,cache,log}/
+
+COPY realesr-general-x4v3.pth realesr-general-x4v3.pth
+COPY yolov9e_0.995_0.823_epoch65.pt yolov9e_0.995_0.823_epoch65.pt
+COPY siglip-so400m-ft siglip-so400m-ft
+
+COPY api_service.py api_service.py
+COPY VLMManager.py VLMManager.py
 
 CMD uvicorn api_service:app --port 5004 --host 0.0.0.0

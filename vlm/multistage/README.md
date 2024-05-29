@@ -22,7 +22,7 @@ docker build -t 12000sgd-multistage-vlm .
 ```
 Test:
 ```shell
-docker run -p 5004:5004 --gpus all --network none -d 12000sgd-multistage-vlm
+docker run -p 5004:5004 --gpus all -d 12000sgd-multistage-vlm
 ```
 Submit:
 ```shell
@@ -94,14 +94,14 @@ TFDS_DATA_DIR=/kaggle/input/til-siglip-tfds BV_JAX_INIT=1 python3 -m big_vision.
 
 ### Takeaways
 - Val and test correlation on CLIPs are not reliable beyond 0.8 mAP due to lack of noisy val data
-- Upscaling is always bad even though they do result in a clearer segregation of scores in CLIPs. To be investigated.
+- Upscaling is always bad on val even though they do result in a clearer segregation of scores in CLIPs. They do improve test scores. This is likely due to local testing samples are not noisy enough and benefit of upscaling is overweighed by the artifacts.
 - SAHI (slicing inference) on YOLO is not suitable for this task despite it being designed for small objects detection.
 - Strong (var=2500) GaussianNoise augmentations significantly improve test performance of YOLO
-- Reason why CLIP-ViT-H and Metaclip-H significantly outperform siglip in local but significantly **underperform** siglip on test:
+- Reason why CLIP-ViT-H and Metaclip-H etc. significantly **outperform** SigLIP in local but significantly **underperform** SigLIP on test:
 1. CLIP-ViT uses softmax as loss. It's learning objective is given **multiple** captions and classifiy them. This means while the model CAN, it does not learn fully the features useful for a single-caption task, which is what is test and not val.
-2. SigLIP on the other hand, uses Sigmoid as loss, which operates on a single one-to-one caption-image pair. This means the model is more suited for the task at hand, despite a smaller scale than H variants.
+2. SigLIP on the other hand, uses Sigmoid as loss, which operates on a one-to-one caption-image pair. This means the model is more suited for the task at hand, despite a smaller scale than H variants.
 - Isolate the 2 tasks and evaluate separately on leaderboard: use pretrained SigLIP and iterate on YOLO until max, then turn to SigLIP.
-- Large BS works a lot better for SigLIP
+- Large BS works a lot better for SigLIP as mentioned by many contrastive loss papers, due to the need for more negative samples in a batch.
 
 ### Evaluation
 
@@ -268,7 +268,7 @@ conf=0.1 aug:
 BS hurting it but training longer helps
 
 
-#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch5
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch5  **(BEST)**
 Models trained on 5x3090, per gpu bs=12, grad accum=16 = effective bs 960.
 
 val set 0.9899894625922023
@@ -279,6 +279,15 @@ conf=0.1 aug:
 - Accuracy: 0.864
 - Speed Score: 0.6763070722222222
 
+continued for 5 more epoch:
+- Accuracy: 0.874
+- Speed Score: 0.6867920601851851
+
+same but with real-esrgan x4v3 upscaling:
+- Accuracy: 0.881
+- Speed Score: 0.6629727242592593
+
+Conclusion: Continued training does not reflect lower training loss but improves on test. Upscaling, despite being CONSISTENTLY bad locally, improves on test.
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-epoch10
 Models trained on 5x3090, per gpu bs=12, grad accum=16 = effective bs 960. With strong augs, final train loss 2.8 (high!)
@@ -366,6 +375,35 @@ conf=0.1 aug:
 
 Conclusion: more epochs does not help, neither did less aug. Something else is fundamentally affecting the model
 
+**FURTHER INVESTIGATION**:
+
+torchvision ops operates on RGB while albumentations likely assumed BGR since it runs on top of OpenCV which uses BGR. This causes a swapped color channel but nothing will error out and model will still maintain some performance due to its robustness to color channel swaps. Reimplementing all torchvisison ops in albumentations made the loss normal.
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-epoch30-fixed
+This model is the same as the previous but with fixed augmentation due to torchvision/albumentations color channel mismatch.
+```python
+self.albu_transforms = A.Compose([
+    A.Resize(image_size, image_size, interpolation=cv2.INTER_LANCZOS4),
+    A.GaussNoise(var_limit=400, p=0.5),
+    A.MultiplicativeNoise(p=0.5),
+    A.Flip(p=0.5),
+    A.RandomRotate90(p=0.5),
+    A.CLAHE(p=0.1),
+    A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.5, p=0.5),
+    A.RandomGamma(p=0.2),
+    A.Perspective(p=0.5),
+    A.ImageCompression(quality_lower=75, p=0.5),
+    A.Normalize(mean=mean, std=std),
+    ToTensorV2()  # CHW
+])
+```
+
+test set:
+
+conf=0.1 aug:
+
+
+
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch5-nodecay
 Same as current best epoch 5 (0.864 test) but no weight decay
 
@@ -382,7 +420,8 @@ siglip-so400m-patch14-384 with no decay, frozen vision, rest same as best (0.864
 test set:
 
 conf=0.1 aug:
-
+- Accuracy: 0.759
+- Speed Score: 0.6347100637037038
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-so400m-patch14-384-ft-3090-epoch5-nodecay
 same as above but with all unfrozen
@@ -390,7 +429,10 @@ same as above but with all unfrozen
 test set:
 
 conf=0.1 aug:
+- Accuracy: 0.864
+- Speed Score: 0.6515823366666667
 
+Same score but slower, not worth
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384
 test set:

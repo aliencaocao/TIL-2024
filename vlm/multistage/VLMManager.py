@@ -4,6 +4,8 @@ import logging
 import numpy as np
 import torch
 from PIL import Image
+from realesrgan import RealESRGANer
+from realesrgan.archs.srvgg_arch import SRVGGNetCompact
 from transformers import AutoImageProcessor, AutoModelForZeroShotImageClassification, AutoTokenizer, ZeroShotImageClassificationPipeline
 from ultralytics import YOLO
 
@@ -41,7 +43,7 @@ class PipelineWithoutPostprocess(ZeroShotImageClassificationPipeline):
 
 
 class VLMManager:
-    def __init__(self, yolo_path: str, clip_path: str):
+    def __init__(self, yolo_path: str, clip_path: str, upscaler_path: str):
         logging.info(f'Loading YOLO model from {yolo_path}')
         self.yolo_model = YOLO(yolo_path)
         logging.info(f'Loading CLIP model from {clip_path}')
@@ -50,6 +52,14 @@ class VLMManager:
                                                      tokenizer=AutoTokenizer.from_pretrained(clip_path),
                                                      image_processor=AutoImageProcessor.from_pretrained(clip_path),
                                                      batch_size=4, device='cuda')
+        logging.info(f'Loading upscaler model from {upscaler_path}')
+        rrdb_net = SRVGGNetCompact(num_in_ch=3, num_out_ch=3, num_feat=64, num_conv=32, upscale=4, act_type='prelu')
+        self.upscaler = RealESRGANer(
+            scale=4,
+            model_path=upscaler_path,
+            model=rrdb_net,
+            pre_pad=10,
+            half=True)
         logging.info('VLMManager initialized')
 
     def identify(self, img_bytes: list[bytes], captions: list[str]) -> list[list[int]]:
@@ -67,7 +77,12 @@ class VLMManager:
         for im, boxes in zip(images, yolo_result):
             im_boxes = []
             for (x1, y1, x2, y2), _ in boxes:
-                im_boxes.append(im.crop((x1, y1, x2, y2)))
+                cropped = im.crop((x1, y1, x2, y2))
+                if not any(s <= 10 for s in cropped.size):
+                    cropped = np.asarray(cropped)
+                    cropped = self.upscaler.enhance(cropped, outscale=4)[0]
+                    cropped = Image.fromarray(cropped)
+                im_boxes.append(cropped)
             cropped_boxes.append(im_boxes)
 
         captions_list = [[caption] for caption in captions]
@@ -100,7 +115,7 @@ if __name__ == "__main__":
     import orjson
     import base64
 
-    vlm_manager = VLMManager(yolo_path='yolov9e_0.995_0.823_epoch65.pt', clip_path='siglip-large-patch16-384')
+    vlm_manager = VLMManager(yolo_path='yolov9e_0.995_0.823_epoch65.pt', clip_path='siglip-large-patch16-384', upscaler_path='realesr-general-x4v3.pth')
     all_answers = []
 
     batch_size = 4

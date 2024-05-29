@@ -11,7 +11,7 @@ docker build -t 12000sgd-nlp .
 ```
 Test:
 ```shell
-docker run -p 5002:5002 --gpus all --network none -d 12000sgd-nlp
+docker run -p 5002:5002 --gpus all -d 12000sgd-nlp
 ```
 Submit:
 ```shell

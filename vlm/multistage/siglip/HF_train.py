@@ -1,13 +1,12 @@
 import os
+
 os.environ["WANDB_PROJECT"] = "TIL2024"
 
 import torch
 from datasets import load_dataset
-from PIL import Image
+import cv2
 import sys
 from torchvision.io import ImageReadMode, read_image
-from torchvision.transforms import CenterCrop, ConvertImageDtype, Normalize, Resize
-from torchvision.transforms.functional import InterpolationMode
 from transformers import (
     Trainer,
     TrainingArguments,
@@ -28,6 +27,7 @@ processor = AutoProcessor.from_pretrained("google/siglip-large-patch16-384")  # 
 # image_processor = AutoImageProcessor.from_pretrained(pretrained_model_path)
 config = model.config
 
+
 # split the ds into train and val. the image column is in format "image_1234_1.jpg". Take 1234 as the image id. Check if the id is smaller than 4086. If yes, put this in train, else in val.
 def get_ds():
     # If error about missing name, use datasets==2.15.0
@@ -37,20 +37,17 @@ def get_ds():
     # return train_dataset, val_dataset
     return dataset
 
+
 # train_dataset, val_dataset = get_ds()
 train_dataset = get_ds()
+
 
 class Transform(torch.nn.Module):
     def __init__(self, image_size, mean, std):
         super().__init__()
-        self.transforms = torch.nn.Sequential(
-            Resize([image_size], interpolation=InterpolationMode.NEAREST),  # lesson from TIL 2023: https://github.com/aliencaocao/TIL-2023?tab=readme-ov-file#finals-specific-tuning-2
-            CenterCrop(image_size),
-            ConvertImageDtype(torch.float32),
-            Normalize(mean, std),
-        )
         self.albu_transforms = A.Compose([
-            A.GaussNoise(var_limit=500 / 255 / 255, p=0.5),  # normalize
+            A.Resize(image_size, image_size, interpolation=cv2.INTER_LANCZOS4),
+            A.GaussNoise(var_limit=500, p=0.5),
             A.MultiplicativeNoise(p=0.5),
             A.Flip(p=0.5),
             A.RandomRotate90(p=0.5),
@@ -59,24 +56,26 @@ class Transform(torch.nn.Module):
             A.RandomGamma(p=0.2),
             A.Perspective(p=0.5),
             A.ImageCompression(quality_lower=75, p=0.5),
-            ToTensorV2()  # change back to CHW here
+            A.Normalize(mean=mean, std=std),
+            ToTensorV2()  # CHW
         ])
 
     def forward(self, x) -> torch.Tensor:
         """`x` should be an instance of `PIL.Image.Image`"""
         with torch.no_grad():
-            x = self.transforms(x)
-            # convert to numpy for albumentations
-            x = x.type(torch.uint8).permute(1, 2, 0).numpy()
+            x = np.asarray(x.permute(1, 2, 0), dtype=np.uint8)  # torch CHW to HWC as required by albumentations
             x = self.albu_transforms(image=x)['image']
             x = x.float()
         return x
+
 
 # For preprocessing the datasets.
 # Initialize torchvision transforms and jit it for faster processing.
 image_transformations = Transform(
     config.vision_config.image_size, processor.image_processor.image_mean, processor.image_processor.image_std
 )
+
+
 # image_transformations = torch.jit.script(image_transformations)
 
 def preprocess_dataset(dataset):
@@ -113,6 +112,7 @@ def preprocess_dataset(dataset):
     data.set_transform(transform_images)
     return data
 
+
 train_dataset = preprocess_dataset(train_dataset)
 # val_dataset = preprocess_dataset(val_dataset)
 
@@ -131,10 +131,11 @@ def compute_metrics(pred: EvalPrediction):
     labels = pred.label_ids
     return {"accuracy": (predictions == labels).mean().item(), 'F1': f1_score(labels, predictions, average='macro')}
 
+
 effective_bs = 960
 gpu_num = 2
 per_dev_bs = 8
-grad_accum = int(960/gpu_num/per_dev_bs)
+grad_accum = int(960 / gpu_num / per_dev_bs)
 
 # initialize Trainer
 training_args = TrainingArguments(
@@ -144,7 +145,7 @@ training_args = TrainingArguments(
     per_device_train_batch_size=per_dev_bs,
     remove_unused_columns=False,
     output_dir="siglip-finetune",
-    #per_device_eval_batch_size=1,
+    # per_device_eval_batch_size=1,
     gradient_accumulation_steps=grad_accum,
     adam_beta1=0.9,
     adam_beta2=0.99,  # decrease from 0.999
@@ -165,11 +166,11 @@ training_args = TrainingArguments(
     # metric_for_best_model='F1',
     # greater_is_better=True,
     optim='adamw_torch_fused',
-    #resume_from_checkpoint=pretrained_model_path,
+    # resume_from_checkpoint=pretrained_model_path,
     report_to='wandb',
     run_name="weak-aug-30epoch",
     gradient_checkpointing=False,
-    torch_compile = sys.platform == 'linux',
+    torch_compile=sys.platform == 'linux',
 )
 
 # free vision backbone following LiT

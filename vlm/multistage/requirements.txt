@@ -5,3 +5,5 @@ uvicorn
 fastapi
 dill  # yolov9c need
 sentencepiece  # siglip need
+git+https://github.com/XPixelGroup/BasicSR.git
+git+https://github.com/xinntao/Real-ESRGAN.git
