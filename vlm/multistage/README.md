@@ -380,11 +380,37 @@ Conclusion: more epochs does not help, neither did less aug. Something else is f
 torchvision ops operates on RGB while albumentations likely assumed BGR since it runs on top of OpenCV which uses BGR. This causes a swapped color channel but nothing will error out and model will still maintain some performance due to its robustness to color channel swaps. Reimplementing all torchvisison ops in albumentations made the loss normal.
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-epoch30-fixed
-This model is the same as the previous but with fixed augmentation due to torchvision/albumentations color channel mismatch.
+This model is the same as the previous but with fixed augmentation due to torchvision/albumentations color channel mismatch. no weight decay
 ```python
 self.albu_transforms = A.Compose([
     A.Resize(image_size, image_size, interpolation=cv2.INTER_LANCZOS4),
     A.GaussNoise(var_limit=400, p=0.5),
+    A.MultiplicativeNoise(p=0.5),
+    A.Flip(p=0.5),
+    A.RandomRotate90(p=0.5),
+    A.CLAHE(p=0.1),
+    A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.5, p=0.5),
+    A.RandomGamma(p=0.2),
+    A.Perspective(p=0.5),
+    A.ImageCompression(quality_lower=75, p=0.5),
+    A.Normalize(mean=mean, std=std),
+    ToTensorV2()  # CHW
+])
+```
+
+test set:
+
+conf=0.1 aug:
+
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-so400m-patch14-384-ft-3090-epoch15-aug
+with 1e-4 weight decay, on fixed aug:
+
+```python
+self.albu_transforms = A.Compose([
+    A.Resize(image_size, image_size, interpolation=cv2.INTER_LANCZOS4),
+    A.GaussNoise(var_limit=500, p=0.5),
+    A.ISONoise(p=0.5),
     A.MultiplicativeNoise(p=0.5),
     A.Flip(p=0.5),
     A.RandomRotate90(p=0.5),
@@ -431,6 +457,10 @@ test set:
 conf=0.1 aug:
 - Accuracy: 0.864
 - Speed Score: 0.6515823366666667
+
+with upscale:
+- Accuracy: 0.878
+- Speed Score: 0.6230587416666666
 
 Same score but slower, not worth
 
