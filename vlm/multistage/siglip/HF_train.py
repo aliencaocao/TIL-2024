@@ -23,7 +23,7 @@ from albumentations.pytorch import ToTensorV2
 pretrained_model_path = "google/siglip-large-patch16-384"
 
 model = SiglipModel.from_pretrained(pretrained_model_path)
-processor = AutoProcessor.from_pretrained(pretrained_model_path)
+processor = AutoProcessor.from_pretrained("google/siglip-large-patch16-384")  # always use pretrained
 # tokenizer = AutoTokenizer.from_pretrained(pretrained_model_path)
 # image_processor = AutoImageProcessor.from_pretrained(pretrained_model_path)
 config = model.config
@@ -131,23 +131,27 @@ def compute_metrics(pred: EvalPrediction):
     labels = pred.label_ids
     return {"accuracy": (predictions == labels).mean().item(), 'F1': f1_score(labels, predictions, average='macro')}
 
+effective_bs = 960
+gpu_num = 2
+per_dev_bs = 8
+grad_accum = int(960/gpu_num/per_dev_bs)
 
 # initialize Trainer
 training_args = TrainingArguments(
     learning_rate=2e-5,
     warmup_ratio=0.1,
-    weight_decay=1e-4,
-    per_device_train_batch_size=12,
+    weight_decay=0,
+    per_device_train_batch_size=per_dev_bs,
     remove_unused_columns=False,
     output_dir="siglip-finetune",
     #per_device_eval_batch_size=1,
-    gradient_accumulation_steps=16,
+    gradient_accumulation_steps=grad_accum,
     adam_beta1=0.9,
     adam_beta2=0.99,  # decrease from 0.999
     num_train_epochs=30,
     lr_scheduler_type="cosine",
     logging_strategy="steps",
-    logging_steps=10,
+    logging_steps=1,
     save_strategy="steps",
     save_steps=0.9999,
     # eval_strategy="epoch",  # eval bugged causing oom
@@ -161,13 +165,16 @@ training_args = TrainingArguments(
     # metric_for_best_model='F1',
     # greater_is_better=True,
     optim='adamw_torch_fused',
-    # optim='adafactor',
-    #resume_from_checkpoint='siglip-finetune/epoch5',
+    #resume_from_checkpoint=pretrained_model_path,
     report_to='wandb',
     run_name="weak-aug-30epoch",
     gradient_checkpointing=False,
     torch_compile = sys.platform == 'linux',
 )
+
+# free vision backbone following LiT
+# for param in model.vision_model.parameters(): param.requires_grad = False
+
 trainer = Trainer(
     model=model,
     args=training_args,

@@ -22,7 +22,7 @@ docker build -t 12000sgd-multistage-vlm .
 ```
 Test:
 ```shell
-docker run -p 5004:5004 --gpus all -d 12000sgd-multistage-vlm
+docker run -p 5004:5004 --gpus all --network none -d 12000sgd-multistage-vlm
 ```
 Submit:
 ```shell
@@ -341,7 +341,7 @@ conf=0.1 aug:
 
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-epoch30-v2
-Models trained on 2x3090, per gpu bs=10, grad accum=48 = effective bs 960. With less augs.
+Models trained on 2x3090, per gpu bs=10, grad accum=48 = effective bs 960. With less augs. Final loss 2.4: https://wandb.ai/aliencaocao/TIL2024/runs/rc47xjod?nw=nwuseraliencaocao
 
 ```python
 self.albu_transforms = A.Compose([
@@ -357,6 +357,49 @@ self.albu_transforms = A.Compose([
     ToTensorV2()  # change back to CHW here
 ])
 ```
+
+test set:
+
+conf=0.1 aug:
+- Accuracy: 0.672
+- Speed Score: 0.6934455792592593
+
+Conclusion: more epochs does not help, neither did less aug. Something else is fundamentally affecting the model
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch5-nodecay
+Same as current best epoch 5 (0.864 test) but no weight decay
+
+test set:
+- Accuracy: 0.861
+- Speed Score: 0.6977295988888889
+
+No weight decay on whole thing doesnt help, the paper say use on text backbone only
+
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-so400m-patch14-384-ft-3090-epoch5-nodecay-lit
+siglip-so400m-patch14-384 with no decay, frozen vision, rest same as best (0.864) https://wandb.ai/aliencaocao/TIL2024/runs/odljiaec
+
+test set:
+
+conf=0.1 aug:
+
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-so400m-patch14-384-ft-3090-epoch5-nodecay
+same as above but with all unfrozen
+
+test set:
+
+conf=0.1 aug:
+
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384
+test set:
+
+conf=0.1 aug:
+- Accuracy: 0.782
+- Speed Score: 0.648020966851852
+
+best zero shot, marginally better than siglip-large-patch16-384 at speed cost
 
 
 #### YOLOv9e 0.995 0.823 epoch67 iou=0.1 + siglip-large-patch16-384
@@ -431,7 +474,7 @@ test set:
 high res degrade perf on val
 
 
-#### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + CLIP-ViT-H-14-laion2B-s32B-b79K
+#### YOLOv9c 0.99 0.769 iou=0.1 + CLIP-ViT-H-14-laion2B-s32B-b79K
 val set 0.8767123287671232
 
 with upscale x2 pad=10: val set 0.7600260841212911
@@ -441,12 +484,14 @@ with upscale x4v3 pad=1: val set 0.41789445486204124
 with upscale x4v3 pad=10: val set 0.819634703196347
 
 test set:
+
+conf=0.365:
 - Accuracy: 0.658
 - Speed Score: 0.7836627077777778
 
 conf=0.01:
-Accuracy: 0.654
-Speed Score: 0.7672438733333333
+- Accuracy: 0.654
+- Speed Score: 0.7672438733333333
 
 Upscaling still bad, ViT-H not as robust to FPs by YOLO as SigLIP-L
 
