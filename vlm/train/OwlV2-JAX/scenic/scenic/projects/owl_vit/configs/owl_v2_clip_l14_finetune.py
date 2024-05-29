@@ -234,11 +234,11 @@ def get_config(init_mode='canonical_checkpoint'):
 
   # Logging.
   config.xprof = True  # Profile using xprof.
-  config.log_summary_steps = 100  # Train summary steps.
+  config.log_summary_steps = 1  # Train summary steps.
   config.checkpoint = True  # Do checkpointing.
   config.checkpoint_steps = 500
-  config.debug_train = False  # Debug mode during training.
-  config.debug_eval = False  # Debug mode during eval.
+  config.debug_train = True  # Debug mode during training.
+  config.debug_eval = True  # Debug mode during eval.
   config.log_eval_steps = 500
 
   return config
