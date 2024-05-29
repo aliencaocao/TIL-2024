@@ -48,6 +48,7 @@ class Transform(torch.nn.Module):
         self.albu_transforms = A.Compose([
             A.Resize(image_size, image_size, interpolation=cv2.INTER_LANCZOS4),
             A.GaussNoise(var_limit=500, p=0.5),
+            A.ISONoise(p=0.5),
             A.MultiplicativeNoise(p=0.5),
             A.Flip(p=0.5),
             A.RandomRotate90(p=0.5),
