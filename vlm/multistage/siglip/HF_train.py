@@ -47,16 +47,17 @@ class Transform(torch.nn.Module):
         super().__init__()
         self.albu_transforms = A.Compose([
             A.Resize(image_size, image_size, interpolation=cv2.INTER_LANCZOS4),
-            A.GaussNoise(var_limit=500, p=0.5),
-            A.ISONoise(p=0.5),
-            A.MultiplicativeNoise(p=0.5),
+            A.GaussNoise(var_limit=(500, 5000), p=1.0, per_channel=True),
+            A.ISONoise(p=1.0, color_shift=(0.02, 0.07)),
+            A.MultiplicativeNoise(p=1.0),
+            A.AdvancedBlur(blur_limit=(3, 10), p=0.3),
             A.Flip(p=0.5),
             A.RandomRotate90(p=0.5),
-            A.CLAHE(p=0.1),
+            A.CLAHE(p=0.2),
             A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.5, p=0.5),
             A.RandomGamma(p=0.2),
             A.Perspective(p=0.5),
-            A.ImageCompression(quality_lower=75, p=0.5),
+            A.ImageCompression(quality_range=(25, 75), p=0.8),
             A.Normalize(mean=mean, std=std),
             ToTensorV2()  # CHW
         ])
@@ -174,8 +175,9 @@ training_args = TrainingArguments(
     torch_compile=sys.platform == 'linux',
 )
 
-# free vision backbone following LiT
+# freeze vision or text backbone
 # for param in model.vision_model.parameters(): param.requires_grad = False
+# for param in model.text_model.parameters(): param.requires_grad = False
 
 trainer = Trainer(
     model=model,

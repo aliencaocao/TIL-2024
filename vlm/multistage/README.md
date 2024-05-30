@@ -431,6 +431,7 @@ self.albu_transforms = A.Compose([
     ToTensorV2()  # CHW
 ])
 ```
+val set 0.9706708816297858
 
 test set:
 
@@ -445,6 +446,8 @@ conf=0.1 aug without upscale:
 conf=0.1 aug with upscale:
 - Accuracy: 0.891
 - Speed Score: 0.6100433083333334
+
+own set: IoU@0.5: 0.5916666666666667
 
 conf=0.3 aug with upscale:
 - Accuracy: 0.891
@@ -473,7 +476,10 @@ A.MultiplicativeNoise(p=1.0),
 ```
 
 test set:
+- Accuracy: 0.889
+- Speed Score: 0.6317016698148148
 
+might be overfitting a bit
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch15-aug
 with 1e-4 weight decay, on fixed aug same as above so400m
