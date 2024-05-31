@@ -34,10 +34,9 @@ class NLPManager:
         self.model_path = model_path
         config = ExLlamaV2Config(self.model_path)
         temperature = 0.0
-        batch_size = 4  # from eval runner
         self.max_new_tokens = 128
         config.max_seq_len = 512
-        config.max_batch_size = batch_size
+        config.max_batch_size = 1  # 1 for finals, 4 for eval/qualifiers
         config.max_output_len = 1  # no need logit => just set to 1, reduce VRAM bandwidth usage a lot
         model = ExLlamaV2(config)
         cache = ExLlamaV2Cache(model, lazy=True, batch_size=config.max_batch_size)
