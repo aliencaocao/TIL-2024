@@ -62,12 +62,10 @@ class VLMManager:
     def __init__(self, yolo_path: str, clip_path: str, upscaler_path: str):
         logging.info(f'Loading YOLO model from {yolo_path}')
         self.yolo_model = YOLO(yolo_path)
-        logging.info(f'Loading CLIP model from {clip_path}')
-        self.clip_model = CustomPipeline(task="zero-shot-image-classification",
-                                         model=AutoModelForZeroShotImageClassification.from_pretrained(clip_path, torch_dtype=torch.float16),
-                                         tokenizer=AutoTokenizer.from_pretrained(clip_path),
-                                         image_processor=AutoImageProcessor.from_pretrained(clip_path),
-                                         batch_size=4, device='cuda')
+        logging.info(f'Warming up YOLO')
+        for i in range(3):
+            self.yolo_model.predict(Image.new('RGB', (1520, 870)), imgsz=1600, conf=0.1, iou=0.1, max_det=10, verbose=False, augment=True)  # warmup
+
         logging.info(f'Loading upscaler model from {upscaler_path}')
         rrdb_net = SRVGGNetCompact(num_in_ch=3, num_out_ch=3, num_feat=64, num_conv=32, upscale=4, act_type='prelu')
         self.upscaler = RealESRGANer(
@@ -76,6 +74,19 @@ class VLMManager:
             model=rrdb_net,
             pre_pad=10,
             half=True)
+        logging.info(f'Warming up upscaler')
+        for i in range(3):
+            self.upscaler.enhance(np.zeros((50, 50, 3), dtype=np.uint8), outscale=4)  # warmup
+
+        logging.info(f'Loading CLIP model from {clip_path}')
+        self.clip_model = CustomPipeline(task="zero-shot-image-classification",
+                                         model=AutoModelForZeroShotImageClassification.from_pretrained(clip_path, torch_dtype=torch.float16),
+                                         tokenizer=AutoTokenizer.from_pretrained(clip_path),
+                                         image_processor=AutoImageProcessor.from_pretrained(clip_path),
+                                         batch_size=4, device='cuda')
+        logging.info(f'Warming up CLIP')
+        for i in range(3):
+            self.clip_model(images=Image.new('RGB', (50, 50)), candidate_labels=['hello'])  # warmup
         logging.info('VLMManager initialized')
 
     def identify(self, img_bytes: list[bytes], captions: list[str]) -> list[list[int]]:
@@ -183,5 +194,5 @@ if __name__ == "__main__":
         bbox = vlm_manager.identify(img_bytes, captions)
         all_answers.extend(bbox)
 
-    with open("results.json", "w") as f:
-        orjson.dump(all_answers, f)
+    with open("results.json", "wb") as f:
+        f.write(orjson.dumps(all_answers))
