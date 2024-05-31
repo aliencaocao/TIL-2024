@@ -71,6 +71,8 @@ if return_loss:
 ```shell
 CUDA_VISIBLE_DEVICES=0,1,4,5,6 accelerate launch HF_train.py
 ```
+4. Run convert_safetensors.py as models trained with torch FDSP + torch dynamo has a prefix in model dict key names
+
 
 ### ~~Training SigLIP using JAX~~ Did not get to work, using HF with custom loss instead
 Generate TensorFlow datasets:
@@ -187,24 +189,25 @@ conf=0.1: val set 0.8542325254654022
 
 test set:
 
-conf=0.1 aug:
-- Accuracy: 0.781
-- Speed Score: 0.6885281759259259
-- Total: 0.77175281759259259
-
 conf=0.01 aug:
 - Accuracy: 0.782
 - Speed Score: 0.680809122037037
 - Total: 0.7718809122037037
 
-conf=0.3 aug:
-- Accuracy: 0.779
-- Speed Score: 0.6993088687037037
+conf=0.1 aug:
+- Accuracy: 0.781
+- Speed Score: 0.6885281759259259
+- Total: 0.77175281759259259
 
 conf=0.1 no aug:
 - Accuracy: 0.779
 - Speed Score: 0.753397417037037
 - Total: 0.7764397417037037
+
+conf=0.3 aug:
+- Accuracy: 0.779
+- Speed Score: 0.6993088687037037
+
 
 both val and test slightly better than epoch62. TTA improves unlike other checkpoints. The improvement in score is not worth the time from augs for quals
 
@@ -279,7 +282,7 @@ conf=0.1 aug:
 - Accuracy: 0.864
 - Speed Score: 0.6763070722222222
 
-continued for 5 more epoch:
+continued for 5 more epoch: (0.781 -> 0.874, 10 epoch ft = 0.093 map improvement)
 - Accuracy: 0.874
 - Speed Score: 0.6867920601851851
 
@@ -379,8 +382,8 @@ Conclusion: more epochs does not help, neither did less aug. Something else is f
 
 torchvision ops operates on RGB while albumentations likely assumed BGR since it runs on top of OpenCV which uses BGR. This causes a swapped color channel but nothing will error out and model will still maintain some performance due to its robustness to color channel swaps. Reimplementing all torchvisison ops in albumentations made the loss normal.
 
-#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-epoch30-fixed
-This model is the same as the previous but with fixed augmentation due to torchvision/albumentations color channel mismatch. no weight decay
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-epoch10-fixed
+This model is the same as the previous but with fixed augmentation due to torchvision/albumentations color channel mismatch. no weight decay. Resumed from epoch 5 (0.864)
 ```python
 self.albu_transforms = A.Compose([
     A.Resize(image_size, image_size, interpolation=cv2.INTER_LANCZOS4),
@@ -401,6 +404,11 @@ self.albu_transforms = A.Compose([
 test set:
 
 conf=0.1 aug:
+- Accuracy: 0.877
+- Speed Score: 0.6770407942592593
+
+Slight drop in perf VS 0.881 might be due to weight decay.
+
 
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-so400m-patch14-384-ft-3090-epoch15-aug
@@ -423,11 +431,66 @@ self.albu_transforms = A.Compose([
     ToTensorV2()  # CHW
 ])
 ```
+val set 0.9706708816297858
 
 test set:
 
-conf=0.1 aug:
+conf=0.01 aug with upscale:
+- Accuracy: 0.864
+- Speed Score: 0.6026722651851852
 
+conf=0.1 aug without upscale:
+- Accuracy: 0.882
+- Speed Score: 0.6314698722222223
+
+conf=0.1 aug with upscale:
+- Accuracy: 0.891
+- Speed Score: 0.6100433083333334
+
+own set: IoU@0.5: 0.5916666666666667
+
+conf=0.3 aug with upscale:
+- Accuracy: 0.891
+- Speed Score: 0.623484457037037
+
+Conclusion for conf-0.1 vs conf-0.3: 
+
+previously with siglip-large, conf0.3 gave 0.779 while conf=0.1 gave 0.781. Here, we see equal performance.
+This means that siglip-large has higher precision when given more bboxes containing more irrelevant images (and also more relevant images from the lowered conf).
+so400m either wrongly classify these new relevant images as FN, which is supported by it having way more FPs at conf=0.01, or had just nice the same amount of new TPs and FNs that they cancel out. This can be a sign of it reaching its limit, meaning further improvement may have to come from obj detector.
+In a way, so400m is worse than siglip large in preventing FPs, but it is also shown that without the obj detector spam BBOX, it is better at TPs and TNs. This places more emphasis that obj detector.
+
+continued for 3 more epoch:
+
+conf=0.1 aug with upscale:
+- Accuracy: 0.877
+- Speed Score: 0.6309745066666667
+
+starting to overfit.
+
+continue from epoch 15 with stronger augs:
+```python
+A.GaussNoise(var_limit=1000, p=1.0),
+A.ISONoise(p=1.0),
+A.MultiplicativeNoise(p=1.0),
+```
+
+test set:
+- Accuracy: 0.889
+- Speed Score: 0.6317016698148148
+
+might be overfitting a bit
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch15-aug
+with 1e-4 weight decay, on fixed aug same as above so400m
+
+test set:
+
+conf=0.1 aug with upscale:
+- Accuracy: 0.887
+- Speed Score: 0.5728528418518519
+
+Conclusion: So400m outperform siglip-large.
 
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch5-nodecay
