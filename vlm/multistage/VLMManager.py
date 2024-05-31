@@ -91,6 +91,9 @@ class VLMManager:
 
     def identify(self, img_bytes: list[bytes], captions: list[str]) -> list[list[int]]:
         logging.info('Predicting')
+        gc.collect()
+        torch.cuda.empty_cache()  # clear up vram for inference
+
         # image is the raw bytes of a JPEG file
         images = [Image.open(io.BytesIO(b)) for b in img_bytes]
 
@@ -133,9 +136,6 @@ class VLMManager:
             bboxes.append([x1, y1, x2 - x1, y2 - y1])
 
         logging.info(f'Captions:\n{captions}\nBoxes:\n{bboxes}')
-
-        gc.collect()
-        torch.cuda.empty_cache()  # clear up vram for next inference
 
         return bboxes
 
