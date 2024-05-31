@@ -15,14 +15,15 @@ from transformers import (
     AutoProcessor,
     EvalPrediction
 )
+import numpy as np
 from modeling_siglip import SiglipModel
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
-pretrained_model_path = "google/siglip-large-patch16-384"
+pretrained_model_path = "google/siglip-so400m-patch14-384"
 
 model = SiglipModel.from_pretrained(pretrained_model_path)
-processor = AutoProcessor.from_pretrained("google/siglip-large-patch16-384")  # always use pretrained
+processor = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")  # always use pretrained
 # tokenizer = AutoTokenizer.from_pretrained(pretrained_model_path)
 # image_processor = AutoImageProcessor.from_pretrained(pretrained_model_path)
 config = model.config
@@ -50,7 +51,7 @@ class Transform(torch.nn.Module):
             A.GaussNoise(var_limit=(500, 5000), p=1.0, per_channel=True),
             A.ISONoise(p=1.0, color_shift=(0.02, 0.07)),
             A.MultiplicativeNoise(p=1.0),
-            A.AdvancedBlur(blur_limit=(3, 10), p=0.3),
+            A.AdvancedBlur(blur_limit=(3, 11), p=0.3),
             A.Flip(p=0.5),
             A.RandomRotate90(p=0.5),
             A.CLAHE(p=0.2),
@@ -76,7 +77,6 @@ class Transform(torch.nn.Module):
 image_transformations = Transform(
     config.vision_config.image_size, processor.image_processor.image_mean, processor.image_processor.image_std
 )
-
 
 # image_transformations = torch.jit.script(image_transformations)
 
@@ -136,7 +136,7 @@ def compute_metrics(pred: EvalPrediction):
 
 effective_bs = 960
 gpu_num = 2
-per_dev_bs = 8
+per_dev_bs = 4  # 4 for 2x24GB GPUs, can increase when got more GPUs due to FDSP
 grad_accum = int(960 / gpu_num / per_dev_bs)
 
 # initialize Trainer
