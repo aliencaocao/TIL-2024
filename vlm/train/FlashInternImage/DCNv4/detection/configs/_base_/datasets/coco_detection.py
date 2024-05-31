@@ -28,22 +28,33 @@ test_pipeline = [
             dict(type='Collect', keys=['img']),
         ])
 ]
+
+# DCNv4 fails some CUDA assert if num_classes is not 80
+# classes = tuple(f'object_{i}' for i in range(1, 81))
+# classes = ('object', ) * 80
+
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=2,
+    samples_per_gpu=16,
+    workers_per_gpu=16,
     train=dict(
         type=dataset_type,
         ann_file=data_root + 'train.json',
         img_prefix=data_root + 'train/',
-        pipeline=train_pipeline),
+        pipeline=train_pipeline,
+        # classes=classes,
+    ),
     val=dict(
         type=dataset_type,
         ann_file=data_root + 'val.json',
         img_prefix=data_root + 'val/',
-        pipeline=test_pipeline),
+        pipeline=test_pipeline,
+        # classes=classes,
+    ),
     test=dict(
         type=dataset_type,
         ann_file=data_root + 'val.json',
         img_prefix=data_root + 'val/',
-        pipeline=test_pipeline))
+        pipeline=test_pipeline,
+        # classes=classes,
+    ))
 evaluation = dict(interval=1, metric='bbox', classwise=True)

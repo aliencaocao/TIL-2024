@@ -8,7 +8,7 @@ _base_ = [
     '../_base_/default_runtime.py',
     '../_base_/schedules/schedule_1x.py',
 ]
-pretrained = 'https://huggingface.co/OpenGVLab/DCNv4/resolve/main/flash_intern_image_l_22k_384.pth'
+pretrained = 'https://huggingface.co/OpenGVLab/DCNv4/resolve/main/dino_4scale_flash_internimage_l_1x_coco.pth'
 model = dict(
     type='DINO',
     backbone=dict(

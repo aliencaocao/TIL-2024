@@ -1,12 +1,17 @@
 git clone https://github.com/OpenGVLab/DCNv4.git
 cd DCNv4
 
-pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu121
+pip install wheel ninja
 
-pip install mmcv==2.1.0 -f https://download.openmmlab.com/mmcv/dist/cu121/torch2.1/index.html
+pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 --extra-index-url https://download.pytorch.org/whl/cu117
+
+pip install -U openmim
+MAX_JOBS=32 mim install mmcv-full==1.7.0
 pip install timm==0.6.11 mmdet==2.28.1
 
 pip install opencv-python termcolor yacs pyyaml scipy
+pip install yapf==0.40.1
 
-pip install wheel ninja
 MAX_JOBS=32 pip install DCNv4
+
+apt install libgl1-mesa-glx libglib2.0-0
