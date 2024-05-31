@@ -37,12 +37,20 @@ docker tag 12000sgd-nlp asia-southeast1-docker.pkg.dev/dsta-angelhack/repository
 docker push asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-vlm:finals
 ```
 
+## VRAM
+- all model loaded: 2.6G
+- yolo pred single image = max 3.2G (first inference has spike of 4.8G)
+- upscaler use less than 10mb
+- siglip so400m = max 2.9g @ 10boxes
+- Overall peak needed: 4.8G
+
+
 ### Training YOLO
 1. Initialize from YOLOv9e checkpoint
 2. Train for 55 epochs with AdamW, lr=1e-3, effective bs=64, image size=1280, cosine LR schedule
 3. Continue for 7 epochs with image size=1600 to improve on high-res and small object further since inference time we use 1600
 
-Albumentations:
+YOLO Augs V1:
 ```python
 T = [
     A.GaussNoise(var_limit=2500, p=0.5),
@@ -54,6 +62,22 @@ T = [
     A.RandomBrightnessContrast(p=0.5),
     A.RandomGamma(p=0.2),
     A.ImageCompression(quality_lower=75, p=0.5),
+]
+```
+
+YOLO Augs V2:
+```python
+T = [
+    A.GaussNoise(var_limit=(500, 5000), p=1.0, per_channel=True),
+    A.ISONoise(p=1.0, color_shift=(0.02, 0.07)),
+    A.MultiplicativeNoise(p=1.0),
+    A.AdvancedBlur(blur_limit=(3, 11), p=0.3),
+    A.Flip(p=0.5),
+    A.RandomRotate90(p=0.5),
+    A.CLAHE(p=0.2),
+    A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.5, p=0.5),
+    A.RandomGamma(p=0.2),
+    A.ImageCompression(quality_range=(25, 75), p=0.8),
 ]
 ```
 
@@ -96,6 +120,7 @@ TFDS_DATA_DIR=/kaggle/input/til-siglip-tfds BV_JAX_INIT=1 python3 -m big_vision.
 
 
 ### Takeaways
+- Inferencing on YOLO with high res (1600px) brings noticible improvement even using weights trained on 640px. Further training on 1280px and then 1600px significantly improves. This is a clear characteristic of small object detection tasks.
 - Val and test correlation on CLIPs are not reliable beyond 0.8 mAP due to lack of noisy val data
 - Upscaling is always bad on val even though they do result in a clearer segregation of scores in CLIPs. They do improve test scores. This is likely due to local testing samples are not noisy enough and benefit of upscaling is overweighed by the artifacts.
 - SAHI (slicing inference) on YOLO is not suitable for this task despite it being designed for small objects detection.
@@ -471,13 +496,13 @@ conf=0.1 aug with upscale:
 
 starting to overfit.
 
-continue from epoch 15 with stronger augs:
+continue from epoch 15 with stronger augs for 4 more:
 ```python
 A.GaussNoise(var_limit=1000, p=1.0),
 A.ISONoise(p=1.0),
 A.MultiplicativeNoise(p=1.0),
 ```
-own test V1: 0.5917
+own test V2: 0.63875
 
 test set:
 - Accuracy: 0.889
@@ -519,7 +544,7 @@ Compared to 0.881 for epoch 10 + fixed aug, this is just epoch 5 and proved to b
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled
 Same as above  0.884 but with training data upscaled 4x using real-esrgan x4v3
 
-own test: 0.6516666666666666
+own test V2: 0.6516666666666666
 
 test set:
 
@@ -528,7 +553,19 @@ conf=0.1 aug with upscale:
 - Accuracy: 0.892
 - Speed Score: 0.5845252370370371
 
-Training on upscale has significant benefit. It allow  siglip large to outperform the current best 0.891 on SO400M 15 epoch aug with just 5 epoch
+Training on upscale has significant benefit. It allows siglip large to outperform the current best 0.891 on SO400M 15 epoch aug with just 5 epoch. Equal perf on own test VS SO400M epoch19, a sign that own test V2 is correlating well to leaderboard.
+
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled-text-lock
+Same as above but with text backbone frozen
+
+test set:
+
+conf=0.1 aug with upscale:
+- Accuracy: 0.888
+- Speed Score: 0.5911145787037038
+
+**Conclusion**: previously shown that image backbone freezes are bad (0.864 -> 0.759 on SO400M). Text backbone however are only slightly worse (0.892 -> 0.888), likely because test data is MUCH more different on visuals than text descriptions compared to pretrained data. This can be a good way to finetune when compute-restricted.
 
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-so400m-patch14-384-augv2_epoch15-upscaled
@@ -543,7 +580,7 @@ conf=0.1 aug with upscale:
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch15-aug
 with 1e-4 weight decay, on fixed aug same as above so400m
 
-own test V1: 5983333333333334
+own test V2: 0.64125
 
 test set:
 

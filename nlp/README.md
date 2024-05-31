@@ -25,6 +25,11 @@ docker tag 12000sgd-nlp asia-southeast1-docker.pkg.dev/dsta-angelhack/repository
 docker push asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-nlp:finals
 ```
 
+## VRAM
+- Peak 6.4G during loading, once loaded is 5.7G.
+- Inference has no increase since KV cache is pre-alloc from ctx len and bs.
+
+
 # ExLlamaV2
 1. [Download](https://drive.google.com/file/d/1VLaP60DxsysOVPCQGFHGR8AR67hzhML6/view) OR Build wheel on Linux and T4 (same as docker runtime)
 ```shell

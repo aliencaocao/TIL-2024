@@ -1,3 +1,7 @@
+# import os
+# os.environ['PYTORCH_NO_CUDA_MEMORY_CACHING'] = '1'
+
+import gc
 import io
 import logging
 
@@ -60,10 +64,10 @@ class VLMManager:
         self.yolo_model = YOLO(yolo_path)
         logging.info(f'Loading CLIP model from {clip_path}')
         self.clip_model = CustomPipeline(task="zero-shot-image-classification",
-                                         model=AutoModelForZeroShotImageClassification.from_pretrained(clip_path),
+                                         model=AutoModelForZeroShotImageClassification.from_pretrained(clip_path, torch_dtype=torch.float16),
                                          tokenizer=AutoTokenizer.from_pretrained(clip_path),
                                          image_processor=AutoImageProcessor.from_pretrained(clip_path),
-                                         batch_size=4, device='cuda', torch_dtype=torch.float16)
+                                         batch_size=4, device='cuda')
         logging.info(f'Loading upscaler model from {upscaler_path}')
         rrdb_net = SRVGGNetCompact(num_in_ch=3, num_out_ch=3, num_feat=64, num_conv=32, upscale=4, act_type='prelu')
         self.upscaler = RealESRGANer(
@@ -119,6 +123,9 @@ class VLMManager:
 
         logging.info(f'Captions:\n{captions}\nBoxes:\n{bboxes}')
 
+        gc.collect()
+        torch.cuda.empty_cache()  # clear up vram for next inference
+
         return bboxes
 
 
@@ -127,7 +134,7 @@ if __name__ == "__main__":
     import orjson
     import base64
 
-    vlm_manager = VLMManager(yolo_path='yolov9e_0.995_0.823_epoch65.pt', clip_path='siglip-large-patch16-384', upscaler_path='realesr-general-x4v3.pth')
+    vlm_manager = VLMManager(yolo_path='yolov9e_0.995_0.823_epoch65.pt', clip_path='siglip/so400m_epoch15_aug_0.891', upscaler_path='real-esrgan/realesr-general-x4v3.pth')
     all_answers = []
 
     batch_size = 4
