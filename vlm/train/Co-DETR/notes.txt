@@ -2,13 +2,21 @@ pip install wheel
 
 pip download torch==1.11.0+cu113 torchvision==0.12.0+cu113 --extra-index-url https://download.pytorch.org/whl/cu113 -d wheels
 
+pip download yapf==0.40.1 -d wheels
+
 pip download mmengine -d wheels
 pip download mmcv-full==1.5.0 -f https://download.openmmlab.com/mmcv/dist/cu115/torch1.11.0/index.html -d wheels
+
+pip download fvcore einops -d wheels
 
 pip install wheels/*
 
 pip wheel -v -e Co-DETR -w wheels
 
+pip install wheels/*
+
 ------------------------------------------
 
 Move stuff accordingly to add ViT-L COCO model
+
+For training, pip install albumentations==1.4.6 (later versions run into error with "x is not in available keys")

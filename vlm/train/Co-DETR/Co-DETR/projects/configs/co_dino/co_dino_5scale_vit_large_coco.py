@@ -5,7 +5,7 @@ _base_ = [
 checkpoint_config = dict(interval=1)
 resume_from = None
 load_from = None
-pretrained = None
+pretrained = "/root/TIL-2024/vlm/train/Co-DETR/co_dino_5scale_vit_large_coco.pth"
 window_block_indexes = (
     list(range(0, 3)) + list(range(4, 7)) + list(range(8, 11)) + list(range(12, 15)) + list(range(16, 19)) +
     list(range(20, 23)) + list(range(24, 27)))
@@ -13,6 +13,8 @@ residual_block_indexes = []
 
 num_dec_layer = 6
 lambda_2 = 2.0
+
+num_classes = 1
 
 model = dict(
     type='CoDETR',
@@ -31,7 +33,7 @@ model = dict(
         residual_block_indexes=residual_block_indexes,
         qkv_bias=True,
         use_act_checkpoint=True,
-        init_cfg=None),
+        init_cfg=dict(type='Pretrained', checkpoint=pretrained)),
     neck=dict(        
         type='SFP',
         in_channels=[1024],        
@@ -59,7 +61,7 @@ model = dict(
     query_head=dict(
         type='CoDINOHead',
         num_query=1500,
-        num_classes=80,
+        num_classes=num_classes,
         num_feature_levels=5,
         in_channels=2048,
         sync_cls_avg_factor=True,
@@ -137,7 +139,7 @@ model = dict(
             conv_out_channels=256,
             fc_out_channels=1024,
             roi_feat_size=7,
-            num_classes=80,
+            num_classes=num_classes,
             bbox_coder=dict(
                 type='DeltaXYWHBBoxCoder',
                 target_means=[0., 0., 0., 0.],
@@ -150,7 +152,7 @@ model = dict(
             loss_bbox=dict(type='GIoULoss', loss_weight=10.0*num_dec_layer*lambda_2)))],
     bbox_head=[dict(
         type='CoATSSHead',
-        num_classes=80,
+        num_classes=num_classes,
         in_channels=256,
         stacked_convs=1,
         feat_channels=256,
@@ -256,52 +258,37 @@ img_norm_cfg = dict(
 # train_pipeline, NOTE the img_scale and the Pad's size_divisor is different
 # from the default setting in mmdet.
 train_pipeline = [
-    dict(type='LoadImageFromFile', file_client_args=file_client_args),
+    dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True),
-    dict(type='RandomFlip', flip_ratio=0.5),
+    dict(type='RandomFlip', direction=['horizontal', 'vertical'], flip_ratio=[0.5, 0.5]),
     dict(
-        type='AutoAugment',
-        policies=[
-            [
-                dict(
-                    type='Resize',
-                    img_scale=[(480, 2048), (512, 2048), (544, 2048), (576, 2048),
-                               (608, 2048), (640, 2048), (672, 2048), (704, 2048),
-                               (736, 2048), (768, 2048), (800, 2048), (832, 2048),
-                               (864, 2048), (896, 2048), (928, 2048), (960, 2048),
-                               (992, 2048), (1024, 2048), (1056, 2048), (1088, 2048),
-                               (1120, 2048), (1152, 2048), (1184, 2048), (1216, 2048),
-                               (1248, 2048), (1280, 2048)],
-                    multiscale_mode='value',
-                    keep_ratio=True)
-            ],
-            [
-                dict(
-                    type='Resize',
-                    # The radio of all image in train dataset < 7
-                   # follow the original impl
-                    img_scale=[(400, 4200), (500, 4200), (600, 4200)],
-                    multiscale_mode='value',
-                    keep_ratio=True),
-                dict(
-                    type='RandomCrop',
-                    crop_type='absolute_range',
-                    crop_size=(384, 600),
-                    allow_negative_crop=True),
-                dict(
-                    type='Resize',
-                    img_scale=[(480, 2048), (512, 2048), (544, 2048), (576, 2048),
-                               (608, 2048), (640, 2048), (672, 2048), (704, 2048),
-                               (736, 2048), (768, 2048), (800, 2048), (832, 2048),
-                               (864, 2048), (896, 2048), (928, 2048), (960, 2048),
-                               (992, 2048), (1024, 2048), (1056, 2048), (1088, 2048),
-                               (1120, 2048), (1152, 2048), (1184, 2048), (1216, 2048),
-                               (1248, 2048), (1280, 2048)],
-                    multiscale_mode='value',
-                    override=True,
-                    keep_ratio=True)
-            ]
-        ]),
+        type='Albu',
+        transforms=[
+            dict(type="GaussNoise", p=1., var_limit=(500, 5000), per_channel=True),
+            dict(type="ISONoise", p=1., color_shift=(0.02, 0.07)),
+            dict(type="MultiplicativeNoise", p=1., multiplier=(0.9, 1.1)),
+            dict(type="AdvancedBlur", p=0.3, blur_limit=(3, 11)),
+            # dict(type="Flip", p=0.5),
+            dict(type="RandomRotate90", p=0.5),
+            dict(type="CLAHE", p=0.2),
+            dict(type="RandomBrightnessContrast", p=0.5, brightness_limit=0.2, contrast_limit=0.5),
+            dict(type="RandomGamma", p=0.2),
+            dict(type="ImageCompression", p=0.8, quality_range=(25, 75)),
+        ],
+        bbox_params=dict(
+            type='BboxParams',
+            format='pascal_voc',
+            label_fields=['gt_labels'],
+            min_visibility=0.0,
+            filter_lost_elements=True,
+        ),
+        keymap={
+            'img': 'image',
+            'gt_masks': 'masks',
+            'gt_bboxes': 'bboxes',
+        },
+        skip_img_without_anno=True,
+    ),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
     dict(type='DefaultFormatBundle'),
@@ -309,10 +296,10 @@ train_pipeline = [
 ]
 
 test_pipeline = [
-    dict(type='LoadImageFromFile', file_client_args=file_client_args),
+    dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=(2048, 1280),
+        img_scale=(1520, 870),
         flip=False,
         transforms=[
             dict(type='Resize', keep_ratio=True),
@@ -323,13 +310,15 @@ test_pipeline = [
             dict(type='Collect', keys=['img'])
         ])
 ]
+fp16 = True
 
+classes = ("object",)
 data = dict(
     samples_per_gpu=1,
-    workers_per_gpu=1,
-    train=dict(filter_empty_gt=False, pipeline=train_pipeline),
-    val=dict(pipeline=test_pipeline),
-    test=dict(pipeline=test_pipeline))
+    workers_per_gpu=16,
+    train=dict(filter_empty_gt=False, pipeline=train_pipeline, classes=classes),
+    val=dict(pipeline=test_pipeline, classes=classes),
+    test=dict(pipeline=test_pipeline, classes=classes))
 
 evaluation = dict(metric='bbox')
 dist_params = dict(backend='nccl')
@@ -347,8 +336,27 @@ runner = dict(type='EpochBasedRunner', max_epochs=16)
 # We use layer-wise learning rate decay, but it has not been implemented.
 optimizer = dict(
     type='AdamW',
-    lr=5e-5,
+    lr=1.25e-5,
+    betas=(0.99375, 0.9999375),
+    eps=4e-8,
     weight_decay=0.05,
     # custom_keys of sampling_offsets and reference_points in DeformDETR
     paramwise_cfg=dict(custom_keys={'backbone': dict(lr_mult=0.1)}))
+optimizer_config = dict(grad_clip=None)
+
+optim_wrapper = dict(
+    type="AmpOptimWrapper",
+    dtype="bfloat16",
+    use_fsdp=True,
+    optimizer=dict(
+        type='AdamW',
+        lr=1.25e-5,
+        betas=(0.99375, 0.9999375),
+        eps=4e-8,
+        weight_decay=0.05,
+        # custom_keys of sampling_offsets and reference_points in DeformDETR
+        paramwise_cfg=dict(custom_keys={'backbone': dict(lr_mult=0.1)})
+    ),
+    clip_grad=None,
+)
 
