@@ -2,8 +2,9 @@
 ## Overview
 1. YOLOv9 trained on single-class detection of targets in general
 2. Extract the bboxes as detected by YOLO
-3. Feed each bbox into a CLIP and get similarity score VS caption (1/image)
-4. Choose the box with the highest similarity score
+3. Run each extracted bbox through Real-ESRGAN x4v3 model to upscale 4x
+4. Feed each bbox into a SigLIP and get similarity score VS caption (1/image)
+5. Choose the box with the highest similarity score for each caption
 
 ## Models
 1. YOLOv9e
@@ -104,6 +105,8 @@ TFDS_DATA_DIR=/kaggle/input/til-siglip-tfds BV_JAX_INIT=1 python3 -m big_vision.
 2. SigLIP on the other hand, uses Sigmoid as loss, which operates on a one-to-one caption-image pair. This means the model is more suited for the task at hand, despite a smaller scale than H variants.
 - Isolate the 2 tasks and evaluate separately on leaderboard: use pretrained SigLIP and iterate on YOLO until max, then turn to SigLIP.
 - Large BS works a lot better for SigLIP as mentioned by many contrastive loss papers, due to the need for more negative samples in a batch.
+- Iterating: train up to 5 epoch to validate helpfulness of change in hyperparams/augs then full train 15 epoch overnight
+
 
 ### Evaluation
 
@@ -271,7 +274,7 @@ conf=0.1 aug:
 BS hurting it but training longer helps
 
 
-#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch5  **(BEST)**
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090- **(BEST)**
 Models trained on 5x3090, per gpu bs=12, grad accum=16 = effective bs 960.
 
 val set 0.9899894625922023
@@ -286,7 +289,7 @@ continued for 5 more epoch: (0.781 -> 0.874, 10 epoch ft = 0.093 map improvement
 - Accuracy: 0.874
 - Speed Score: 0.6867920601851851
 
-same but with real-esrgan x4v3 upscaling:
+same (10epoch) but with real-esrgan x4v3 upscaling:
 - Accuracy: 0.881
 - Speed Score: 0.6629727242592593
 
@@ -447,7 +450,7 @@ conf=0.1 aug with upscale:
 - Accuracy: 0.891
 - Speed Score: 0.6100433083333334
 
-own set: IoU@0.5: 0.5916666666666667
+own test V1: IoU@0.5: 0.5916666666666667
 
 conf=0.3 aug with upscale:
 - Accuracy: 0.891
@@ -474,6 +477,7 @@ A.GaussNoise(var_limit=1000, p=1.0),
 A.ISONoise(p=1.0),
 A.MultiplicativeNoise(p=1.0),
 ```
+own test V1: 0.5917
 
 test set:
 - Accuracy: 0.889
@@ -481,8 +485,65 @@ test set:
 
 might be overfitting a bit
 
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-augv2_epoch5
+Even stronger augs, rest same as best config (0.864 etc)
+```python
+self.albu_transforms = A.Compose([
+    A.Resize(image_size, image_size, interpolation=cv2.INTER_LANCZOS4),
+    A.GaussNoise(var_limit=(500, 5000), p=1.0, per_channel=True),
+    A.ISONoise(p=1.0, color_shift=(0.02, 0.07)),
+    A.MultiplicativeNoise(p=1.0),
+    A.AdvancedBlur(blur_limit=(3, 11), p=0.3),
+    A.Flip(p=0.5),
+    A.RandomRotate90(p=0.5),
+    A.CLAHE(p=0.2),
+    A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.5, p=0.5),
+    A.RandomGamma(p=0.2),
+    A.Perspective(p=0.5),
+    A.ImageCompression(quality_range=(25, 75), p=0.8),
+    A.Normalize(mean=mean, std=std),
+    ToTensorV2()  # CHW
+])
+```
+
+test set:
+
+conf=0.1 aug with upscale:
+- Accuracy: 0.884
+- Speed Score: 0.6111272474074074
+
+Compared to 0.881 for epoch 10 + fixed aug, this is just epoch 5 and proved to be better. New aug is good.
+
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled
+Same as above  0.884 but with training data upscaled 4x using real-esrgan x4v3
+
+own test: 0.6516666666666666
+
+test set:
+
+conf=0.1 aug with upscale:
+
+- Accuracy: 0.892
+- Speed Score: 0.5845252370370371
+
+Training on upscale has significant benefit. It allow  siglip large to outperform the current best 0.891 on SO400M 15 epoch aug with just 5 epoch
+
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-so400m-patch14-384-augv2_epoch15-upscaled
+Same augv2 and trained on upscaled data
+
+test set:
+
+conf=0.1 aug with upscale:
+
+# TODO
+
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch15-aug
 with 1e-4 weight decay, on fixed aug same as above so400m
+
+own test V1: 5983333333333334
 
 test set:
 
@@ -490,7 +551,7 @@ conf=0.1 aug with upscale:
 - Accuracy: 0.887
 - Speed Score: 0.5728528418518519
 
-Conclusion: So400m outperform siglip-large.
+Conclusion: So400m outperform siglip-large on leaderboard but underperform on own test.
 
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch5-nodecay
