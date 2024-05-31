@@ -7,6 +7,7 @@ from PIL import Image
 from realesrgan import RealESRGANer
 from realesrgan.archs.srvgg_arch import SRVGGNetCompact
 from transformers import AutoImageProcessor, AutoModelForZeroShotImageClassification, AutoTokenizer, ZeroShotImageClassificationPipeline
+from transformers.image_utils import load_image
 from ultralytics import YOLO
 
 logging.basicConfig(
@@ -17,7 +18,18 @@ logging.basicConfig(
     ])
 
 
-class PipelineWithoutPostprocess(ZeroShotImageClassificationPipeline):
+class CustomPipeline(ZeroShotImageClassificationPipeline):
+    def preprocess(self, image, candidate_labels=None, hypothesis_template="This is a photo of {}.", timeout=None):
+        image = load_image(image, timeout=timeout)
+        inputs = self.image_processor(images=[image], return_tensors=self.framework)
+        inputs["pixel_values"] = inputs["pixel_values"].type(self.torch_dtype)  # cast to whatever dtype model is in (previously always in fp32)
+        inputs["candidate_labels"] = candidate_labels
+        sequences = [hypothesis_template.format(x) for x in candidate_labels]
+        padding = "max_length" if self.model.config.model_type == "siglip" else True
+        text_inputs = self.tokenizer(sequences, return_tensors=self.framework, padding=padding)
+        inputs["text_inputs"] = [text_inputs]
+        return inputs
+
     def postprocess(self, model_outputs):
         candidate_labels = model_outputs.pop("candidate_labels")
         logits = model_outputs["logits"][0]
@@ -47,11 +59,11 @@ class VLMManager:
         logging.info(f'Loading YOLO model from {yolo_path}')
         self.yolo_model = YOLO(yolo_path)
         logging.info(f'Loading CLIP model from {clip_path}')
-        self.clip_model = PipelineWithoutPostprocess(task="zero-shot-image-classification",
-                                                     model=AutoModelForZeroShotImageClassification.from_pretrained(clip_path),
-                                                     tokenizer=AutoTokenizer.from_pretrained(clip_path),
-                                                     image_processor=AutoImageProcessor.from_pretrained(clip_path),
-                                                     batch_size=4, device='cuda')
+        self.clip_model = CustomPipeline(task="zero-shot-image-classification",
+                                         model=AutoModelForZeroShotImageClassification.from_pretrained(clip_path),
+                                         tokenizer=AutoTokenizer.from_pretrained(clip_path),
+                                         image_processor=AutoImageProcessor.from_pretrained(clip_path),
+                                         batch_size=4, device='cuda', torch_dtype=torch.float16)
         logging.info(f'Loading upscaler model from {upscaler_path}')
         rrdb_net = SRVGGNetCompact(num_in_ch=3, num_out_ch=3, num_feat=64, num_conv=32, upscale=4, act_type='prelu')
         self.upscaler = RealESRGANer(
@@ -90,7 +102,7 @@ class VLMManager:
 
         # clip inference
         clip_results = []
-        with torch.cuda.amp.autocast():
+        with torch.no_grad():
             for boxes, im_captions in zip(cropped_boxes, captions_list):
                 r = self.clip_model(boxes, candidate_labels=im_captions)
                 # only 1 caption/img at test time so just use [0]
