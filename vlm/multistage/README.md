@@ -45,7 +45,7 @@ docker push asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplu
 - Overall peak needed: 4.8G
 
 
-### Training YOLO
+### Training YOLO Augs V1
 1. Initialize from YOLOv9e checkpoint
 2. Train for 55 epochs with AdamW, lr=1e-3, effective bs=64, image size=1280, cosine LR schedule
 3. Continue for 7 epochs with image size=1600 to improve on high-res and small object further since inference time we use 1600
@@ -134,6 +134,15 @@ TFDS_DATA_DIR=/kaggle/input/til-siglip-tfds BV_JAX_INIT=1 python3 -m big_vision.
 
 
 ### Evaluation
+
+#### YOLOv9c 0.99 0.769 on own test
+0.5095833333333334
+
+#### YOLOv9e 0.995 0.801 on own test
+0.7375
+
+## YOLOv9e 0.995 0.823 epoch65 on own test
+0.7529166666666667
 
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + siglip-large-patch16-256
 test set:
@@ -574,8 +583,21 @@ Same augv2 and trained on upscaled data
 test set:
 
 conf=0.1 aug with upscale:
+- Accuracy: 0.885
+- Speed Score: 0.62944337
 
-# TODO
+Unexpected but might be overfitting.
+
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-so400m-patch14-384-augv2_epoch5-upscaled
+conf=0.1 aug with upscale:
+- 
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-so400m-patch14-384-augv2_epoch10-upscaled
+continued from epoch 5
+
+conf=0.1 aug with upscale:
+- 
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch15-aug
 with 1e-4 weight decay, on fixed aug same as above so400m
