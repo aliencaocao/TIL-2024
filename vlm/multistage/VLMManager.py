@@ -8,6 +8,7 @@ import logging
 import numpy as np
 import torch
 from PIL import Image
+from ensemble_boxes import weighted_boxes_fusion
 from realesrgan import RealESRGANer
 from realesrgan.archs.srvgg_arch import SRVGGNetCompact
 from transformers import AutoImageProcessor, AutoModelForZeroShotImageClassification, AutoTokenizer, ZeroShotImageClassificationPipeline
@@ -59,12 +60,15 @@ class CustomPipeline(ZeroShotImageClassificationPipeline):
 
 
 class VLMManager:
-    def __init__(self, yolo_path: str, clip_path: str, upscaler_path: str):
-        logging.info(f'Loading YOLO model from {yolo_path}')
-        self.yolo_model = YOLO(yolo_path)
+    def __init__(self, yolo_paths: list[str], clip_path: str, upscaler_path: str):
+        logging.info(f'Loading {len(yolo_paths)} YOLO models from {yolo_paths}')
+        self.yolo_models = [YOLO(yolo_path) for yolo_path in yolo_paths]
+        self.yolo_wbf_weights = [1] * len(self.yolo_models)
+        assert len(self.yolo_models) == len(self.yolo_wbf_weights)
         logging.info(f'Warming up YOLO')
         for i in range(3):
-            self.yolo_model.predict(Image.new('RGB', (1520, 870)), imgsz=1600, conf=0.1, iou=0.1, max_det=10, verbose=False, augment=True)  # warmup
+            for yolo_model in self.yolo_models:
+                yolo_model.predict(Image.new('RGB', (1520, 870)), imgsz=1600, conf=0.1, iou=0.1, max_det=10, verbose=False, augment=True)  # warmup
 
         logging.info(f'Loading upscaler model from {upscaler_path}')
         rrdb_net = SRVGGNetCompact(num_in_ch=3, num_out_ch=3, num_feat=64, num_conv=32, upscale=4, act_type='prelu')
@@ -104,19 +108,40 @@ class VLMManager:
         # image is the raw bytes of a JPEG file
         images = [Image.open(io.BytesIO(b)) for b in img_bytes]
 
-        # YOLO object det
-        yolo_result = self.yolo_model.predict(images, imgsz=1600, conf=0.1, iou=0.1, max_det=10, verbose=False, augment=True)
-        yolo_result = [(r.boxes.xyxy.tolist(), r.boxes.conf.tolist()) for r in yolo_result]
-        yolo_result = [tuple(zip(*r)) for r in yolo_result]  # list of tuple[box, conf] in each image in xyxy format
+        yolo_results = []
+        # YOLO object det with WBF
+        for yolo_model in self.yolo_models:
+            yolo_result = yolo_model.predict(images, imgsz=1600, conf=0.1, iou=0.1, max_det=10, verbose=False, augment=True)
+            yolo_result = [(r.boxes.xyxyn.tolist(), r.boxes.conf.tolist()) for r in yolo_result]  # WBF need normalized xyxy
+            yolo_result = [tuple(zip(*r)) for r in yolo_result]  # list of tuple[box, conf] in each image
+            yolo_results.append(yolo_result)
+
+        wbf_boxes = []
+        for i, img in enumerate(images):
+            boxes_list = []
+            scores_list = []
+            labels_list = []
+            for yolo_result in yolo_results:
+                boxes_list.append([r[0] for r in yolo_result[i]])
+                scores_list.append([r[1] for r in yolo_result[i]])
+                labels_list.append([0] * len(yolo_result[i]))
+            boxes, scores, labels = weighted_boxes_fusion(boxes_list, scores_list, labels_list, weights=self.yolo_wbf_weights, iou_thr=0.5, skip_box_thr=0.0001)
+            boxes = boxes.tolist()
+            # normalize
+            w, h = img.size
+            boxes = [[x1 * w, y1 * h, x2 * w, y2 * h] for x1, y1, x2, y2 in boxes]
+            wbf_boxes.append(boxes)
+
+        assert len(wbf_boxes) == len(images)  # shld be == bs
 
         # crop the boxes out
         cropped_boxes = []
-        for im, boxes in zip(images, yolo_result):
+        for im, boxes in zip(images, wbf_boxes):
             im_boxes = []
-            for (x1, y1, x2, y2), _ in boxes:
+            for x1, y1, x2, y2 in boxes:
                 cropped = im.crop((x1, y1, x2, y2))
                 cropped = np.asarray(cropped)
-                if not any(s <= 10 for s in cropped.size):
+                if not any(s <= 10 for s in cropped.shape[:2]):
                     cropped = self.upscaler_pad10.enhance(cropped, outscale=4)[0]
                 else:
                     cropped = self.upscaler_pad1.enhance(cropped, outscale=4)[0]
@@ -138,9 +163,9 @@ class VLMManager:
 
         bboxes = []
         # combine the results
-        for caption, yolo_box, similarity_scores in zip(captions, yolo_result, clip_results):
+        for caption, yolo_box, similarity_scores in zip(captions, wbf_boxes, clip_results):
             box_idx = np.argmax(similarity_scores[caption])
-            x1, y1, x2, y2 = yolo_box[box_idx][0]
+            x1, y1, x2, y2 = yolo_box[box_idx]
             # convert to ltwh
             bboxes.append([x1, y1, x2 - x1, y2 - y1])
 
@@ -154,7 +179,7 @@ if __name__ == "__main__":
     import orjson
     import base64
 
-    vlm_manager = VLMManager(yolo_path='yolov9e_0.995_0.823_epoch65.pt', clip_path='siglip/so400m_epoch15_aug_0.891', upscaler_path='real-esrgan/realesr-general-x4v3.pth')
+    vlm_manager = VLMManager(yolo_paths=['yolov9e_0.995_0.823_epoch65.pt', 'yolov9e_0.995_0.825_epoch62.pt'], clip_path='siglip/siglip-large-epoch5-augv2-upscale_0.892', upscaler_path='real-esrgan/realesr-general-x4v3.pth')
     all_answers = []
 
     batch_size = 4
