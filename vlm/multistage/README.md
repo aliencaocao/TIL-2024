@@ -573,9 +573,13 @@ pad=1 is bad for all BUT still better than not upscaling small images.
 continued from ep5 for another 5ep, rest same as 0.894
 # TODO
 
-SAHI on epoch 65 with auto slice (6):
+SAHI on epoch 65 with auto slice (6) conf=0.1:
 - Accuracy: 0.867
 - Speed Score: 0.2951938051851851
+
+SAHI on epoch 65 with auto slice (6) conf=0.3:
+- Accuracy: 0.891
+- Speed Score: 0.3115894898148148
 
 WBF with epoch62 and 65 at 1536  1, 1:
 - Accuracy: 0.881

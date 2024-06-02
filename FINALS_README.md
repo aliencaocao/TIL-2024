@@ -6,7 +6,7 @@
    1. [Additional Directories](#additional-directories)
    2. [Simulator](#simulator)
 2. [Instructions](#instructions)
-   1. [Local Developement Environment Setup](#local-developement-environment-setup)
+   1. [Local Development Environment Setup](#local-development-environment-setup)
    2. [Artifacts Submission](#artifacts-submission)
    3. [Docker + Artifact Registry Recap](#docker-and-artifact-registry-recap)
    4. [Docker Compose](#docker-compose)
@@ -44,7 +44,7 @@ The simulator is written in JavaScript and uses `3js` to render the 3D environme
 
 ## Instructions
 
-### Local Developement Environment Setup
+### Local Development Environment Setup
 
 From here on, you will need to have a local development environment set up for your own testing. This local development environment should have:
 
@@ -105,7 +105,7 @@ When your model is pushed successfully, you should be able to see it under your 
 
 ### Docker Compose
 
-To run all the containers, we will be using [Docker Compose](https://docs.docker.com/compose/), a tool that lets you easily configure and run multi-container applications.
+To run all the containers, we will be using [Docker Compose](https://docs.docker.com/compose/), a tool that lets you easily configure and run multi-container applications. Note that you will likely have to install it if it is not already installed (e.g. it may not be installed on the GCP instance); see [the Docker Compose plugin installation instructions](https://docs.docker.com/compose/install/#scenario-two-install-the-compose-plugin).
 
 ```bash
 # start all the services
@@ -158,6 +158,21 @@ To install it, see the [installation docs provided by GCP](https://cloud.google.
 
 Then, run `gcloud init`, which should open a browser window for you to grant permissions for your user account. If prompted for your project id, input `dsta-angelhack`. If prompted for your region, input `asia-southeast1`. If prompted for your zone, input the zone corresponding to the zone of your team's instance (should be of the form `asia-southeast1-x` where x is any of `a`, `b`, or `c`).
 
+Then run the following, ensuring to replace `TEAM-NAME` with your team name.
+
+```bash
+gcloud auth configure-docker asia-southeast1-docker.pkg.dev -q
+gcloud config set artifacts/location asia-southeast1
+gcloud config set artifacts/repository repository-TEAM-NAME
+```
+
+You should then be able to push to your team's Artifact Registry repository same as during qualifiers:
+
+```bash
+docker tag TEAM-NAME-asr asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-TEAM-NAME/TEAM-NAME-asr:finals
+docker push asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-TEAM-NAME/TEAM-NAME-asr:finals
+```
+
 ## Known Issues
 
 ### Robomaster SDK
@@ -181,3 +196,32 @@ pip install robomaster
 ```
 
 This will create a new Python 3.8 environment `robo` and configure it to use `x86` packages using Rosetta instead of native ones for `arm64`.
+
+### Loading Models Offline
+
+Some HuggingFace models, such as the DETR model referenced in the training curriculum, encounter some issues when trying to load from a finetuned model offline, as they rely on some backbone weights from HuggingFace Hub not stored in the model when downloaded using the `save_pretrained()` function.
+
+One possible solution to this problem is to run a script to load the models once when building the Dockerfile. This will cache whatever backbone weights are necessary, so subsequent calls of the model will just use the cached version instead of trying to access the HuggingFace Hub (which won't be possible without internet access).
+
+Here's an example of what such a script, `save_cache.py`, would look like:
+
+```python
+from transformers import (
+    AutoImageProcessor,
+    AutoModelForObjectDetection
+)
+
+detr_checkpoint = "models/detr_model.pth"
+
+detr_model = AutoModelForObjectDetection.from_pretrained(detr_checkpoint)
+detr_processor = AutoImageProcessor.from_pretrained(detr_checkpoint)
+```
+
+Then in your Dockerfile, add these lines after `pip install -r requirements.txt` and copying over necessary files (especially the model file).
+
+```dockerfile
+COPY save_cache.py save_cache.py
+RUN python3 save_cache.py
+```
+
+This will copy and run `save_cache.py`, which will save the model backbone weights to the `.cache` directory on the image, allowing it to be loaded offline by HuggingFace Transformers later on.

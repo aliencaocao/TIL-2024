@@ -179,7 +179,7 @@ if __name__ == "__main__":
     import orjson
     import base64
 
-    vlm_manager = VLMManager(yolo_paths=['yolov9e_0.995_0.823_epoch65.pt', 'yolov9e_0.995_0.825_epoch62.pt'], clip_path='siglip/siglip-large-epoch5-augv2-upscale_0.892', upscaler_path='real-esrgan/realesr-general-x4v3.pth')
+    vlm_manager = VLMManager(yolo_paths=['yolov9e_0.995_0.823_epoch65.pt'], clip_path='siglip/siglip-large-epoch5-augv2-upscale_0.892', upscaler_path='real-esrgan/realesr-general-x4v3.pth')
     all_answers = []
 
     batch_size = 4
