@@ -68,16 +68,14 @@ T = [
 YOLO Augs V2:
 ```python
 T = [
-    A.GaussNoise(var_limit=(500, 5000), p=1.0, per_channel=True),
+    A.GaussNoise(var_limit=(500, 2500), p=1.0, per_channel=True),
     A.ISONoise(p=1.0, color_shift=(0.02, 0.07)),
     A.MultiplicativeNoise(p=1.0),
-    A.AdvancedBlur(blur_limit=(3, 11), p=0.3),
+    A.AdvancedBlur(blur_limit=(3, 7), p=0.2),
     A.Flip(p=0.5),
-    A.RandomRotate90(p=0.5),
     A.CLAHE(p=0.2),
     A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.5, p=0.5),
     A.RandomGamma(p=0.2),
-    A.ImageCompression(quality_range=(25, 75), p=0.8),
 ]
 ```
 
@@ -389,7 +387,7 @@ conf=0.1 aug:
 - Speed Score: 0.6066626014814815
 
 
-#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-epoch30-v2
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-aug-`epoch3`0-v2
 Models trained on 2x3090, per gpu bs=10, grad accum=48 = effective bs 960. With less augs. Final loss 2.4: https://wandb.ai/aliencaocao/TIL2024/runs/rc47xjod?nw=nwuseraliencaocao
 
 ```python
@@ -551,19 +549,26 @@ Compared to 0.881 for epoch 10 + fixed aug, this is just epoch 5 and proved to b
 
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled
-Same as above  0.884 but with training data upscaled 4x using real-esrgan x4v3
+Same as above  0.884 but with training data upscaled 4x using real-esrgan x4v3 (pad=10 with image < 10 untouched)
 
 own test V2: 0.6516666666666666
 
 test set:
 
-conf=0.1 aug with upscale:
-
+conf=0.1 aug with upscale pad=10:
 - Accuracy: 0.892
 - Speed Score: 0.5845252370370371
 
-Training on upscale has significant benefit. It allows siglip large to outperform the current best 0.891 on SO400M 15 epoch aug with just 5 epoch. Equal perf on own test VS SO400M epoch19, a sign that own test V2 is correlating well to leaderboard.
+conf=0.1 aug with upscale pad=1:
+- Accuracy: 0.887
+- Speed Score: 0.6722072796296297
 
+conf=0.1 aug with upscale pad conditional (>10: 10, <=10: 1):
+- Accuracy: 0.894
+- Speed Score: 0.6546273527777777
+
+Training on upscale has significant benefit. It allows siglip large to outperform the current best 0.891 on SO400M 15 epoch aug with just 5 epoch. Equal perf on own test VS SO400M epoch19, a sign that own test V2 is correlating well to leaderboard.
+pad=1 is bad for all BUT still better than not upscaling small images.
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled-text-lock
 Same as above but with text backbone frozen
@@ -590,14 +595,21 @@ Unexpected but might be overfitting.
 
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-so400m-patch14-384-augv2_epoch5-upscaled
-conf=0.1 aug with upscale:
-- 
-
-#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-so400m-patch14-384-augv2_epoch10-upscaled
-continued from epoch 5
+training loss is slightly lower than ep15, but may be due to shorter warmup period (10% of total steps).
 
 conf=0.1 aug with upscale:
-- 
+- Accuracy: 0.885
+- Speed Score: 0.6373048718518519
+
+weird but could be overfitting too since larger training data now means easier for model to learn.
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-so400m-patch14-384-augv2_epoch3-upscaled
+conf=0.1 aug with upscale:
+- Accuracy: 0.878
+- Speed Score: 0.619298697037037
+
+Underfitting. Weird that so400m is not doing very well on test set. Might be overfitting after all.
+
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090-epoch15-aug
 with 1e-4 weight decay, on fixed aug same as above so400m

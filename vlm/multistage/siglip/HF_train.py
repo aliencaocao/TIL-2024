@@ -105,7 +105,7 @@ def preprocess_dataset(dataset):
     )
 
     def transform_images(examples):
-        image_dir = 'til_siglip_ds/'
+        image_dir = 'til_siglip_ds_x4v3_v2/'
         images = [read_image(image_dir + image_file, mode=ImageReadMode.RGB) for image_file in examples[image_column]]
         examples["pixel_values"] = [image_transformations(image) for image in images]
         return examples

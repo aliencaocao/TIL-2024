@@ -68,15 +68,22 @@ class VLMManager:
 
         logging.info(f'Loading upscaler model from {upscaler_path}')
         rrdb_net = SRVGGNetCompact(num_in_ch=3, num_out_ch=3, num_feat=64, num_conv=32, upscale=4, act_type='prelu')
-        self.upscaler = RealESRGANer(
+        self.upscaler_pad10 = RealESRGANer(
             scale=4,
             model_path=upscaler_path,
             model=rrdb_net,
             pre_pad=10,
             half=True)
+        self.upscaler_pad1 = RealESRGANer(
+            scale=4,
+            model_path=upscaler_path,
+            model=rrdb_net,
+            pre_pad=1,
+            half=True)
         logging.info(f'Warming up upscaler')
         for i in range(3):
-            self.upscaler.enhance(np.zeros((50, 50, 3), dtype=np.uint8), outscale=4)  # warmup
+            self.upscaler_pad10.enhance(np.zeros((50, 50, 3), dtype=np.uint8), outscale=4)  # warmup
+            self.upscaler_pad1.enhance(np.zeros((8, 10, 3), dtype=np.uint8), outscale=4)  # warmup
 
         logging.info(f'Loading CLIP model from {clip_path}')
         self.clip_model = CustomPipeline(task="zero-shot-image-classification",
@@ -108,10 +115,12 @@ class VLMManager:
             im_boxes = []
             for (x1, y1, x2, y2), _ in boxes:
                 cropped = im.crop((x1, y1, x2, y2))
+                cropped = np.asarray(cropped)
                 if not any(s <= 10 for s in cropped.size):
-                    cropped = np.asarray(cropped)
-                    cropped = self.upscaler.enhance(cropped, outscale=4)[0]
-                    cropped = Image.fromarray(cropped)
+                    cropped = self.upscaler_pad10.enhance(cropped, outscale=4)[0]
+                else:
+                    cropped = self.upscaler_pad1.enhance(cropped, outscale=4)[0]
+                cropped = Image.fromarray(cropped)
                 im_boxes.append(cropped)
             cropped_boxes.append(im_boxes)
 
