@@ -306,7 +306,7 @@ conf=0.1 aug:
 BS hurting it but training longer helps
 
 
-#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090- **(BEST)**
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-ft-3090
 Models trained on 5x3090, per gpu bs=12, grad accum=16 = effective bs 960.
 
 val set 0.9899894625922023
@@ -563,12 +563,34 @@ conf=0.1 aug with upscale pad=1:
 - Accuracy: 0.887
 - Speed Score: 0.6722072796296297
 
-conf=0.1 aug with upscale pad conditional (>10: 10, <=10: 1):
+conf=0.1 aug with upscale pad conditional (>10: 10, <=10: 1): **(BEST)**
 - Accuracy: 0.894
 - Speed Score: 0.6546273527777777
 
 Training on upscale has significant benefit. It allows siglip large to outperform the current best 0.891 on SO400M 15 epoch aug with just 5 epoch. Equal perf on own test VS SO400M epoch19, a sign that own test V2 is correlating well to leaderboard.
 pad=1 is bad for all BUT still better than not upscaling small images.
+
+continued from ep5 for another 5ep, rest same as 0.894
+# TODO
+
+SAHI on epoch 65 with auto slice (6):
+- Accuracy: 0.867
+- Speed Score: 0.2951938051851851
+
+WBF with epoch62 and 65 at 1536  1, 1:
+- Accuracy: 0.881
+- Speed Score: 0.5903281548148147
+
+WBF with epoch62 and 65 at 1600 1, 1:
+- Accuracy: 0.885
+- Speed Score: 0.5567839605555556
+
+WBF with epoch62 and 65 at 1600 0.2, 1:
+- Accuracy: 0.887
+- Speed Score: 0.5553002087037037
+
+The epoch 62 model dragging it down. Dropping reso to 1536 makes it worse.
+
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled-text-lock
 Same as above but with text backbone frozen
