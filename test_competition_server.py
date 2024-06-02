@@ -152,7 +152,7 @@ async def team_endpoint(websocket: WebSocket, team_name: str):
             results["elapsed"] = elapsed
             results["nlp_score"] = nlp_eval([case["truth"]], [results["nlp"]])
             results["vlm_score"] = vlm_eval([results["bbox"]], [results["vlm"]])
-            results["perf_score"] = 1 - min(10, elapsed) / 10
+            results["perf_score"] = 1 - min(30, elapsed) / 30
             results["score"] = (
                 0.45 * results["nlp_score"]
                 + 0.45 * results["vlm_score"]

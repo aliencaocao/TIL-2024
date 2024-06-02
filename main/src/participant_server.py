@@ -29,7 +29,7 @@ async def server():
         print(f"connecting to competition server {SERVER_IP} at port {SERVER_PORT}")
         try:
             while True:
-                # should be receiving either audio bytes for asr, or "done!" message
+                # should be receiving either audio bytes for asr, or done/healthcheck json
                 socket_input = await websocket.recv()
                 if type(socket_input) is str:
                     # handle either done or healthcheck
@@ -42,28 +42,28 @@ async def server():
                         continue
                 print(f"run {index}")
                 # ASR
-                transcript = manager.run_asr(socket_input)
+                transcript = await manager.run_asr(socket_input)
                 print(transcript)
                 # NLP
-                qa_ans = manager.run_nlp(transcript)
+                qa_ans = await manager.run_nlp(transcript)
                 print(qa_ans)
                 query = qa_ans["target"]
                 # autonomy
                 try:
-                    image = manager.send_heading(qa_ans["heading"])
+                    image = await manager.send_heading(qa_ans["heading"])
                 except AssertionError as e:
                     # if heading is wrong, get image of scene at default heading 000
                     print(e)
-                    image = manager.send_heading("000")
+                    image = await manager.send_heading("000")
                 # VLM
-                vlm_results = manager.run_vlm(image, query)
+                vlm_results = await manager.run_vlm(image, query)
                 print(vlm_results)
                 # submit results and reset
                 await manager.send_result(
                     websocket,
                     {"asr": transcript, "nlp": qa_ans, "vlm": vlm_results},
                 )
-                manager.reset_cannon()
+                await manager.reset_cannon()
                 print(f"done run {index}")
                 index += 1
         except websockets.ConnectionClosed:
