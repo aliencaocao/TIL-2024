@@ -14,7 +14,7 @@ class FinalsManager(ABC):
         await self.client.aclose()
 
     async def async_post(self, endpoint: str, json: Optional[Dict] = None):
-        return await self.client.post(endpoint, json=json)
+        return await self.client.post(endpoint, json=json, timeout=None)
 
     async def send_result(
         self, websocket: websockets.WebSocketClientProtocol, data: Dict[str, Any]
