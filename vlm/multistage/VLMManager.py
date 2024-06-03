@@ -11,6 +11,8 @@ from PIL import Image
 from ensemble_boxes import weighted_boxes_fusion
 from realesrgan import RealESRGANer
 from realesrgan.archs.srvgg_arch import SRVGGNetCompact
+from sahi import AutoDetectionModel
+from sahi.predict import get_sliced_prediction
 from transformers import AutoImageProcessor, AutoModelForZeroShotImageClassification, AutoTokenizer, ZeroShotImageClassificationPipeline
 from transformers.image_utils import load_image
 from ultralytics import YOLO
@@ -64,8 +66,6 @@ class VLMManager:
         logging.info(f'Loading {len(yolo_paths)} YOLO models from {yolo_paths}. Using SAHI: {use_sahi}')
         self.use_sahi = use_sahi
         if self.use_sahi:
-            from sahi import AutoDetectionModel
-            from sahi.predict import get_sliced_prediction
             self.yolo_models = [AutoDetectionModel.from_pretrained(
                 model_type="yolov8",
                 model_path=yolo_path,
