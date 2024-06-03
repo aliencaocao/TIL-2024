@@ -1,5 +1,5 @@
 from statistics import mean
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from rouge_score import rouge_scorer
 
@@ -30,7 +30,7 @@ def nlp_eval(truth: List[Dict[str, str]], hypothesis: List[Dict[str, str]]) -> f
     return mean(results)
 
 
-def nlp_eval_detailed(truth: List[Dict[str, str]], hypothesis: List[Dict[str, str]]) -> tuple[float, Dict[str, float], Dict[str, Dict[str, float]]]:
+def nlp_eval_detailed(truth: List[Dict[str, str]], hypothesis: List[Dict[str, str]]) -> Tuple[float, Dict[str, float], Dict[str, Dict[str, float]]]:
     scores = {key: [] for key in keys}
     results = []
     for ref, hyp in zip(truth, hypothesis):

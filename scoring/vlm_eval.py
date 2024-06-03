@@ -5,13 +5,13 @@ from statistics import mean
 from typing import List
 
 
-def bb_iou(bb1: List[int], bb2: List[int]) -> int:
+def bb_iou(bb1: Optional[List[int]], bb2: List[int]) -> int:
     """
     Calculate the Intersection over Union (IoU) of two bounding boxes in ltwh format.
 
     Parameters
     ----------
-    bb1 : list[int, int, int, int]
+    bb1 : list[int, int, int, int] | None
         left, top, width, height
     bb2 : list[int, int, int, int]
         left, top, width, height
@@ -21,6 +21,8 @@ def bb_iou(bb1: List[int], bb2: List[int]) -> int:
     int
         0 or 1
     """
+    if not bb1:
+        return 0
     boxA = [bb1[0], bb1[1], bb1[0] + bb1[2], bb1[1] + bb1[3]]
     boxB = [bb2[0], bb2[1], bb2[0] + bb2[2], bb2[1] + bb2[3]]
 
