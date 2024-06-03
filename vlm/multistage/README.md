@@ -1,7 +1,7 @@
 # Muli Stage approach
 ## Overview
 1. YOLOv9 trained on single-class detection of targets in general
-2. Extract the bboxes as detected by YOLO
+2. Extract the bboxes as detected by YOLO, optionally using SAHI (Slicing Aided Hyper Inference)
 3. Run each extracted bbox through Real-ESRGAN x4v3 model to upscale 4x
 4. Feed each bbox into a SigLIP and get similarity score VS caption (1/image)
 5. Choose the box with the highest similarity score for each caption
