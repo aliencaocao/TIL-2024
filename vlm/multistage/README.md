@@ -563,7 +563,7 @@ conf=0.1 aug with upscale pad=1:
 - Accuracy: 0.887
 - Speed Score: 0.6722072796296297
 
-conf=0.1 aug with upscale pad conditional (>10: 10, <=10: 1): **(BEST)**
+conf=0.1 aug with upscale pad conditional (>10: 10, <=10: 1):
 - Accuracy: 0.894
 - Speed Score: 0.6546273527777777
 
@@ -571,7 +571,12 @@ Training on upscale has significant benefit. It allows siglip large to outperfor
 pad=1 is bad for all BUT still better than not upscaling small images.
 
 continued from ep5 for another 5ep, rest same as 0.894
-# TODO
+
+No SAHI:
+
+
+SAHI conf-0.5:
+ # TODO
 
 SAHI on epoch 65 with auto slice (6) conf=0.1:
 - Accuracy: 0.867
@@ -580,6 +585,12 @@ SAHI on epoch 65 with auto slice (6) conf=0.1:
 SAHI on epoch 65 with auto slice (6) conf=0.3:
 - Accuracy: 0.891
 - Speed Score: 0.3115894898148148
+
+SAHI on epoch 65 with auto slice (6) conf=0.5: **(BEST)**
+- Accuracy: 0.902
+- Speed Score: 0.31025421537037035
+
+**Conclusion** SAHI need to use high conf thresh likely to reduce increased FPs as we zoom and slice
 
 WBF with epoch62 and 65 at 1536  1, 1:
 - Accuracy: 0.881
@@ -883,8 +894,3 @@ pre_pad=10: val set 0.7804706708816298
 Conclusion: pre_pad 1 or 10 dont make much diff, but speed increase VS acc improvement is good. Still worse than without upscaling though. realesr-general-x4v3 is better than normal x4 marginally.
 
 **ESRGAN not worth it. Does not improve accuracy on all CLIPs.**
-
-
-## TODO
-1. Manual impl slicing inference (batched) for YOLO to detect small objects, tried yolo-patched-inference and it sucks
-2. Try speed diff of pipeline VS openclip

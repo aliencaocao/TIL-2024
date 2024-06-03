@@ -60,15 +60,30 @@ class CustomPipeline(ZeroShotImageClassificationPipeline):
 
 
 class VLMManager:
-    def __init__(self, yolo_paths: list[str], clip_path: str, upscaler_path: str):
-        logging.info(f'Loading {len(yolo_paths)} YOLO models from {yolo_paths}')
-        self.yolo_models = [YOLO(yolo_path) for yolo_path in yolo_paths]
+    def __init__(self, yolo_paths: list[str], clip_path: str, upscaler_path: str, use_sahi: bool = True):
+        logging.info(f'Loading {len(yolo_paths)} YOLO models from {yolo_paths}. Using SAHI: {use_sahi}')
+        self.use_sahi = use_sahi
+        if self.use_sahi:
+            from sahi import AutoDetectionModel
+            from sahi.predict import get_sliced_prediction
+            self.yolo_models = [AutoDetectionModel.from_pretrained(
+                model_type="yolov8",
+                model_path=yolo_path,
+                confidence_threshold=0.5,
+                device="cuda"
+            ) for yolo_path in yolo_paths]
+        else:
+            self.yolo_models = [YOLO(yolo_path) for yolo_path in yolo_paths]
+
         self.yolo_wbf_weights = [1] * len(self.yolo_models)
         assert len(self.yolo_models) == len(self.yolo_wbf_weights)
         logging.info(f'Warming up YOLO')
         for i in range(3):
             for yolo_model in self.yolo_models:
-                yolo_model.predict(Image.new('RGB', (1520, 870)), imgsz=1600, conf=0.1, iou=0.1, max_det=10, verbose=False, augment=True)  # warmup
+                if self.use_sahi:
+                    get_sliced_prediction(Image.new('RGB', (1520, 870)), yolo_model, perform_standard_pred=True, postprocess_class_agnostic=True, verbose=0).object_prediction_list  # noqa
+                else:
+                    yolo_model.predict(Image.new('RGB', (1520, 870)), imgsz=1600, conf=0.1, iou=0.1, max_det=10, verbose=False, augment=True)  # warmup
 
         logging.info(f'Loading upscaler model from {upscaler_path}')
         rrdb_net = SRVGGNetCompact(num_in_ch=3, num_out_ch=3, num_feat=64, num_conv=32, upscale=4, act_type='prelu')
@@ -111,9 +126,16 @@ class VLMManager:
         yolo_results = []
         # YOLO object det with WBF
         for yolo_model in self.yolo_models:
-            yolo_result = yolo_model.predict(images, imgsz=1600, conf=0.1, iou=0.1, max_det=10, verbose=False, augment=True)
-            yolo_result = [(r.boxes.xyxyn.tolist(), r.boxes.conf.tolist()) for r in yolo_result]  # WBF need normalized xyxy
-            yolo_result = [tuple(zip(*r)) for r in yolo_result]  # list of tuple[box, conf] in each image
+            if self.use_sahi:
+                yolo_result = []
+                for image in images:
+                    per_img_result = get_sliced_prediction(image, yolo_model, perform_standard_pred=True, postprocess_class_agnostic=True, verbose=0).object_prediction_list
+                    per_img_result = [([r.bbox.minx / 1520, r.bbox.miny / 870, r.bbox.maxx / 1520, r.bbox.maxy / 870], r.score.value) for r in per_img_result]
+                    yolo_result.append(per_img_result)
+            else:
+                yolo_result = yolo_model.predict(images, imgsz=1600, conf=0.1, iou=0.1, max_det=10, verbose=False, augment=True)
+                yolo_result = [(r.boxes.xyxyn.tolist(), r.boxes.conf.tolist()) for r in yolo_result]  # WBF need normalized xyxy
+                yolo_result = [tuple(zip(*r)) for r in yolo_result]  # list of tuple[box, conf] in each image
             yolo_results.append(yolo_result)
 
         wbf_boxes = []
