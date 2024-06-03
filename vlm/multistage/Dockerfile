@@ -32,7 +32,7 @@ RUN rm -rf /var/lib/{apt,dpkg,cache,log}/
 
 COPY realesr-general-x4v3.pth realesr-general-x4v3.pth
 COPY yolov9e_0.995_0.823_epoch65.pt yolov9e_0.995_0.823_epoch65.pt
-COPY siglip-so400m-ft siglip-so400m-ft
+COPY siglip-large-patch16-384-ft siglip-large-patch16-384-ft
 
 COPY api_service.py api_service.py
 COPY VLMManager.py VLMManager.py

@@ -79,6 +79,8 @@ T = [
 ]
 ```
 
+AugsV2 proven to be bad.
+
 ### Training SigLIP using HF
 1. Copy modeling_siglip.py from https://github.com/huggingface/transformers/blob/bdb9106f247fca48a71eb384be25dbbd29b065a8/src/transformers/models/siglip/modeling_siglip.py
 2. Add loss func adapted from JAX in https://github.com/google-research/big_vision/blob/01edb81a4716f93a48be43b3a4af14e29cdb3a7f/big_vision/trainers/proj/image_text/siglip.py#L287 to https://github.com/huggingface/transformers/blob/bdb9106f247fca48a71eb384be25dbbd29b065a8/src/transformers/models/siglip/modeling_siglip.py#L1230
@@ -567,16 +569,13 @@ conf=0.1 aug with upscale pad conditional (>10: 10, <=10: 1):
 - Accuracy: 0.894
 - Speed Score: 0.6546273527777777
 
+conf=0.5 aug with upscale pad conditional (>10: 10, <=10: 1):
+- Accuracy: 0.899
+- Speed Score: 0.6836933364814815
+
 Training on upscale has significant benefit. It allows siglip large to outperform the current best 0.891 on SO400M 15 epoch aug with just 5 epoch. Equal perf on own test VS SO400M epoch19, a sign that own test V2 is correlating well to leaderboard.
 pad=1 is bad for all BUT still better than not upscaling small images.
-
-continued from ep5 for another 5ep, rest same as 0.894
-
-No SAHI:
-
-
-SAHI conf-0.5:
- # TODO
+conf=0.5 is better now as new trained siglip-large is worse on low conf/many FP boxes
 
 SAHI on epoch 65 with auto slice (6) conf=0.1:
 - Accuracy: 0.867
@@ -586,9 +585,13 @@ SAHI on epoch 65 with auto slice (6) conf=0.3:
 - Accuracy: 0.891
 - Speed Score: 0.3115894898148148
 
-SAHI on epoch 65 with auto slice (6) conf=0.5: **(BEST)**
+SAHI on epoch 65 with auto slice (6) conf=0.5:
 - Accuracy: 0.902
 - Speed Score: 0.31025421537037035
+
+SAHI on epoch 65 with auto slice (6) conf=0.7:
+- Accuracy: 0.884
+- Speed Score: 0.3067358027777778
 
 **Conclusion** SAHI need to use high conf thresh likely to reduce increased FPs as we zoom and slice
 
@@ -606,6 +609,34 @@ WBF with epoch62 and 65 at 1600 0.2, 1:
 
 The epoch 62 model dragging it down. Dropping reso to 1536 makes it worse.
 
+
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled-cont-5ep
+Continued from above 0.894 for 5 more epoch
+
+No SAHI conf=0.1:
+- Accuracy: 0.889
+- Speed Score: 0.6697810924074075
+
+This is worse than ep5 where (0.894 -> 0.889)
+
+No SAHI conf=0.5:
+- Accuracy: 0.896
+- Speed Score: 0.6889453096296296
+
+SAHI conf=0.5: **(BEST)**
+- Accuracy: 0.905
+- Speed Score: 0.28737872240740736
+
+BUT this is better than ep5 where (0.902 -> 0.905)
+
+#### YOLOv9e 0.995 0.814 epoch89 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled
+New yolo trained on augsV2
+
+SAHI conf0.5:
+- Accuracy: 0.879
+- Speed Score: 0.2790422940740741
+
+new yolo bad, augs V2 sucks.
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled-text-lock
 Same as above but with text backbone frozen
@@ -628,7 +659,11 @@ conf=0.1 aug with upscale:
 - Accuracy: 0.885
 - Speed Score: 0.62944337
 
-Unexpected but might be overfitting.
+conf=0.5 aug with upscale:
+- Accuracy: 0.892
+- Speed Score: 0.6295357251851852
+
+Unexpected but might be overfitting. Higher confidence improves which means it is weaker at FPs.
 
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-so400m-patch14-384-augv2_epoch5-upscaled

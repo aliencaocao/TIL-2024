@@ -83,7 +83,7 @@ class VLMManager:
                 if self.use_sahi:
                     get_sliced_prediction(Image.new('RGB', (1520, 870)), yolo_model, perform_standard_pred=True, postprocess_class_agnostic=True, verbose=0).object_prediction_list  # noqa
                 else:
-                    yolo_model.predict(Image.new('RGB', (1520, 870)), imgsz=1600, conf=0.1, iou=0.1, max_det=10, verbose=False, augment=True)  # warmup
+                    yolo_model.predict(Image.new('RGB', (1520, 870)), imgsz=1600, conf=0.5, iou=0.1, max_det=10, verbose=False, augment=True)  # warmup
 
         logging.info(f'Loading upscaler model from {upscaler_path}')
         rrdb_net = SRVGGNetCompact(num_in_ch=3, num_out_ch=3, num_feat=64, num_conv=32, upscale=4, act_type='prelu')
@@ -133,7 +133,7 @@ class VLMManager:
                     per_img_result = [([r.bbox.minx / 1520, r.bbox.miny / 870, r.bbox.maxx / 1520, r.bbox.maxy / 870], r.score.value) for r in per_img_result]
                     yolo_result.append(per_img_result)
             else:
-                yolo_result = yolo_model.predict(images, imgsz=1600, conf=0.1, iou=0.1, max_det=10, verbose=False, augment=True)
+                yolo_result = yolo_model.predict(images, imgsz=1600, conf=0.5, iou=0.1, max_det=10, verbose=False, augment=True)
                 yolo_result = [(r.boxes.xyxyn.tolist(), r.boxes.conf.tolist()) for r in yolo_result]  # WBF need normalized xyxy
                 yolo_result = [tuple(zip(*r)) for r in yolo_result]  # list of tuple[box, conf] in each image
             yolo_results.append(yolo_result)
