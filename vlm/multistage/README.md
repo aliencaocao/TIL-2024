@@ -636,6 +636,10 @@ SAHI conf0.5:
 - Accuracy: 0.879
 - Speed Score: 0.2790422940740741
 
+On epoch5_cont_5 no SAHI conf0.5:
+- Accuracy: 0.89
+- Speed Score: 0.6602123187037037
+
 new yolo bad, augs V2 sucks.
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled-text-lock
