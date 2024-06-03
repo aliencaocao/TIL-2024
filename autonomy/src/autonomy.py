@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-import os
+import os, time
 from contextlib import asynccontextmanager
 
 from environment import Environment
 from fastapi import FastAPI, HTTPException, Request, Response
 from robot_env import RobotEnv
 from sim_env import SimEnv
+
+import PIL.Image as Image
+import io
 
 env: Environment | None = None
 TEAM_NAME = os.getenv("TEAM_NAME", "Team Name")
@@ -57,13 +60,14 @@ async def health():
     else:
         return HTTPException(503, "websocket not initialized")
 
-
+count = 0
 @app.post("/send_heading")
 async def send_heading(request: Request):
+    global count
     request_dict = await request.json()
 
     heading = request_dict["heading"]
-    print(heading)
+    print(request_dict)
     # TODO: fill in here
     # depends on how your team would like to implement the robotics component
     heading = int(heading)
@@ -73,6 +77,12 @@ async def send_heading(request: Request):
     await env.pan_cannon(heading)
     print("taking snapshot")
     b_image: bytes = await env.take_snapshot()
+    
+    savepath = str(count) + ".jpg"
+    image = Image.open(io.BytesIO(b_image))
+    image.save(savepath)
+    count += 1
+    
     return Response(content=b_image, media_type="image/jpeg")
 
 

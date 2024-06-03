@@ -16,7 +16,7 @@ TEAM_TRACK = os.getenv("TEAM_TRACK")
 
 def main():
     # input_dir = Path(f"/home/jupyter/{TEAM_TRACK}")
-    input_dir = Path(f"../../data/{TEAM_TRACK}/train")
+    input_dir = Path(f"data")
     # results_dir = Path(f"/home/jupyter/{TEAM_NAME}")
     results_dir = Path("results")
     results_dir.mkdir(parents=True, exist_ok=True)
@@ -36,7 +36,7 @@ def main():
 
 
 def run_batched(
-    instances: List[Dict[str, str | int]], batch_size: int = 4
+    instances: List[Dict[str, str | int]], batch_size: int = 1
 ) -> List[Dict[str, str | int]]:
     # split into batches
     results = []

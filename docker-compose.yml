@@ -18,8 +18,9 @@ services:
       retries: 5
       start_period: 3s
   til-main:
-    build: main/
-    image: til_main:v0.0.1
+    # build: main/
+    # image: 12000sgdplushie-main:latest
+    image: asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgdplushie-main:finals
     environment:
       - COMPETITION_SERVER_IP=${COMPETITION_SERVER_IP}
       - COMPETITION_SERVER_PORT=${COMPETITION_SERVER_PORT}
@@ -47,8 +48,7 @@ services:
         restart: true
     command: ["python", "participant_server.py"]
   til-asr:
-    build: asr/
-    image: til_asr:v0.0.1
+    image: asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgdplushie-asr:latest
     container_name: til-asr
     environment:
       NVIDIA_VISIBLE_DEVICES: 0
@@ -73,8 +73,7 @@ services:
       retries: 5
       start_period: 3s
   til-nlp:
-    build: nlp/
-    image: til_nlp:v0.0.1
+    image: asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-nlp:finals
     container_name: til-nlp
     environment:
       NVIDIA_VISIBLE_DEVICES: 0
@@ -100,7 +99,9 @@ services:
       start_period: 3s
   til-autonomy:
     build: autonomy/
-    image: til_autonomy:v0.0.1
+    image: 12000sgdplushie-autonomy:latest
+    # image: asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgdplushie-autonomy:finals
+    # image: asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgdplushie-autonomy:finals
     stdin_open: true
     tty: true
     environment:
@@ -129,8 +130,10 @@ services:
       retries: 5
       start_period: 3s
   til-vlm:
-    build: vlm/
-    image: til_vl:v0.0.1
+    # build: vlm/
+    # image: til_vlm:v0.0.1
+    # image: asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-multistage-vlm:yolo-ep65-aug-siglip-large-augv2-upscale-pad1-cond-ep5-conf0.1
+    image: asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgdplushie-vlm:finals
     container_name: til-vlm
     environment:
       NVIDIA_VISIBLE_DEVICES: 0

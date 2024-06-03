@@ -16,22 +16,22 @@ TEAM_TRACK = os.getenv("TEAM_TRACK")
 
 
 def main():
-    input_dir = Path(f"/home/jupyter/{TEAM_TRACK}")
+    input_dir = Path(f"data")
     # input_dir = Path(f"data")
-    results_dir = Path(f"/home/jupyter/{TEAM_NAME}")
+    results_dir = Path(f"vlmresults")
     # results_dir = Path("results")
 
     results_dir.mkdir(parents=True, exist_ok=True)
     instances = []
     truths = []
     counter = 0
-    # max_samples = 400  # try on 12 samples only
+    max_samples = 12  # try on 12 samples only
     with open(input_dir / "vlm.jsonl", "r") as f:
         for line in tqdm(f):
             if line.strip() == "":
                 continue
-            # if counter > max_samples:
-            #     break
+            if counter > max_samples:
+                break
             instance = json.loads(line.strip())
             with open(input_dir / "images" / instance["image"], "rb") as file:
                 image_bytes = file.read()
