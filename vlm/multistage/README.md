@@ -81,6 +81,22 @@ T = [
 
 AugsV2 proven to be bad.
 
+YOLO Augs V3:
+```python
+T = [
+    A.GaussNoise(var_limit=2500, p=0.5),
+    A.ISONoise(p=0.5),
+    A.Flip(p=0.5),
+    A.Blur(p=0.1),
+    A.MedianBlur(p=0.1),
+    A.ToGray(p=0.1),
+    A.CLAHE(p=0.1),
+    A.RandomBrightnessContrast(p=0.5),
+    A.RandomGamma(p=0.2),
+    A.ImageCompression(quality_lower=75, p=0.5),
+]
+```
+
 ### Training SigLIP using HF
 1. Copy modeling_siglip.py from https://github.com/huggingface/transformers/blob/bdb9106f247fca48a71eb384be25dbbd29b065a8/src/transformers/models/siglip/modeling_siglip.py
 2. Add loss func adapted from JAX in https://github.com/google-research/big_vision/blob/01edb81a4716f93a48be43b3a4af14e29cdb3a7f/big_vision/trainers/proj/image_text/siglip.py#L287 to https://github.com/huggingface/transformers/blob/bdb9106f247fca48a71eb384be25dbbd29b065a8/src/transformers/models/siglip/modeling_siglip.py#L1230
@@ -136,13 +152,19 @@ TFDS_DATA_DIR=/kaggle/input/til-siglip-tfds BV_JAX_INIT=1 python3 -m big_vision.
 ### Evaluation
 
 #### YOLOv9c 0.99 0.769 on own test
-0.5095833333333334
+map@0.5 self calculated: 0.5095833333333334
+![img_2.png](img_2.png)
 
 #### YOLOv9e 0.995 0.801 on own test
-0.7375
+map@0.5 self calculated: 0.7375
+![img_1.png](img_1.png)
 
 ## YOLOv9e 0.995 0.823 epoch65 on own test
-0.7529166666666667
+map@0.5 self calculated: 0.7529166666666667
+![img.png](img.png)
+
+### YOLOv9e 0.995 0.814 epoch89 augsv2 on own test
+![img_3.png](img_3.png)
 
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + siglip-large-patch16-256
 test set:
@@ -931,5 +953,3 @@ pre_pad=1: val set 0.782051282051282
 pre_pad=10: val set 0.7804706708816298
 
 Conclusion: pre_pad 1 or 10 dont make much diff, but speed increase VS acc improvement is good. Still worse than without upscaling though. realesr-general-x4v3 is better than normal x4 marginally.
-
-**ESRGAN not worth it. Does not improve accuracy on all CLIPs.**
