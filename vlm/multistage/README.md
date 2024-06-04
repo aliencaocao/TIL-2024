@@ -645,11 +645,17 @@ No SAHI conf=0.5:
 - Accuracy: 0.896
 - Speed Score: 0.6889453096296296
 
+This is also worse than ep5 where (0.899 -> 0.896)
+
 SAHI conf=0.5: **(BEST)**
 - Accuracy: 0.905
 - Speed Score: 0.28737872240740736
 
 BUT this is better than ep5 where (0.902 -> 0.905)
+
+`asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-multistage-vlm:yolo-ep65-aug-siglip-large-augv2-upscale-ep10-sahi`
+
+`a6a5186814858bb9749e45fc9bd00cc83776616563c1ee5dedf76f79358f4158`
 
 #### YOLOv9e 0.995 0.814 epoch89 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled
 New yolo trained on augsV2
@@ -953,3 +959,6 @@ pre_pad=1: val set 0.782051282051282
 pre_pad=10: val set 0.7804706708816298
 
 Conclusion: pre_pad 1 or 10 dont make much diff, but speed increase VS acc improvement is good. Still worse than without upscaling though. realesr-general-x4v3 is better than normal x4 marginally.
+
+### Credits
+SAHI batched inference implementation is modified from https://github.com/andressrodrl/sahi_custom/tree/batch_inf
