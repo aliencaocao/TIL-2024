@@ -33,8 +33,8 @@ gcloud ai models upload --region asia-southeast1 --display-name '12000sgd-multis
 ```
 Finals submission:
 ```shell
-docker tag 12000sgd-nlp asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-vlm:finals
-docker push asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-vlm:finals
+docker tag 12000sgd-multistage-vlm asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgdplushie-vlm:finals
+docker push asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgdplushie-vlm:finals
 ```
 
 ## VRAM
@@ -80,6 +80,22 @@ T = [
 ```
 
 AugsV2 proven to be bad.
+
+YOLO Augs V3:
+```python
+T = [
+    A.GaussNoise(var_limit=2500, p=0.5),
+    A.ISONoise(p=0.5),
+    A.Flip(p=0.5),
+    A.Blur(p=0.1),
+    A.MedianBlur(p=0.1),
+    A.ToGray(p=0.1),
+    A.CLAHE(p=0.1),
+    A.RandomBrightnessContrast(p=0.5),
+    A.RandomGamma(p=0.2),
+    A.ImageCompression(quality_lower=75, p=0.5),
+]
+```
 
 ### Training SigLIP using HF
 1. Copy modeling_siglip.py from https://github.com/huggingface/transformers/blob/bdb9106f247fca48a71eb384be25dbbd29b065a8/src/transformers/models/siglip/modeling_siglip.py
@@ -136,13 +152,88 @@ TFDS_DATA_DIR=/kaggle/input/til-siglip-tfds BV_JAX_INIT=1 python3 -m big_vision.
 ### Evaluation
 
 #### YOLOv9c 0.99 0.769 on own test
-0.5095833333333334
+map@0.5 self calculated: 0.5095833333333334
+```
+Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.127
+Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.394
+Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.042
+Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
+Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.153
+Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.080
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.081
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.208
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.208
+Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.247
+Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.077
+```
 
 #### YOLOv9e 0.995 0.801 on own test
-0.7375
+map@0.5 self calculated: 0.7375
+```
+Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.239
+Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.667
+Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.096
+Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
+Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.223
+Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.310
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.108
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.342
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.342
+Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.348
+Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.323
+```
 
-## YOLOv9e 0.995 0.823 epoch65 on own test
-0.7529166666666667
+#### YOLOv9e 0.995 0.823 epoch65 on own test
+map@0.5 self calculated: 0.7529166666666667
+```
+Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.249
+Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.679
+Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.107
+Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
+Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.224
+Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.335
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.113
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.354
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.354
+Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.350
+Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.367
+```
+
+#### YOLOv9e 0.995 0.814 epoch89 augsv2 on own test
+```
+Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.197
+Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.574
+Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.073
+Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
+Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.184
+Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.256
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.100
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.289
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.289
+Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.296
+Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.264
+```
+
+#### YOLOv6l6 augsv3 on own test
+map@0.5 self calculated: 0.8136515912897823
+```
+Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.297
+Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.768
+Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.140
+Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
+Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.266
+Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.387
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.126
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.397
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.397
+Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.394
+Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.407
+```
 
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + siglip-large-patch16-256
 test set:
@@ -623,11 +714,17 @@ No SAHI conf=0.5:
 - Accuracy: 0.896
 - Speed Score: 0.6889453096296296
 
+This is also worse than ep5 where (0.899 -> 0.896)
+
 SAHI conf=0.5: **(BEST)**
 - Accuracy: 0.905
 - Speed Score: 0.28737872240740736
 
 BUT this is better than ep5 where (0.902 -> 0.905)
+
+`asia-southeast1-docker.pkg.dev/dsta-angelhack/repository-12000sgdplushie/12000sgd-multistage-vlm:yolo-ep65-aug-siglip-large-augv2-upscale-ep10-sahi`
+
+`a6a5186814858bb9749e45fc9bd00cc83776616563c1ee5dedf76f79358f4158`
 
 #### YOLOv9e 0.995 0.814 epoch89 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled
 New yolo trained on augsV2
@@ -932,4 +1029,5 @@ pre_pad=10: val set 0.7804706708816298
 
 Conclusion: pre_pad 1 or 10 dont make much diff, but speed increase VS acc improvement is good. Still worse than without upscaling though. realesr-general-x4v3 is better than normal x4 marginally.
 
-**ESRGAN not worth it. Does not improve accuracy on all CLIPs.**
+### Credits
+SAHI batched inference implementation is modified from https://github.com/andressrodrl/sahi_custom/tree/batch_inf

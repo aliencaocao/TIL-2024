@@ -81,7 +81,7 @@ class VLMManager:
         for i in range(3):
             for yolo_model in self.yolo_models:
                 if self.use_sahi:
-                    get_sliced_prediction(Image.new('RGB', (1520, 870)), yolo_model, perform_standard_pred=True, postprocess_class_agnostic=True, verbose=0).object_prediction_list  # noqa
+                    get_sliced_prediction(Image.new('RGB', (1520, 870)), yolo_model, perform_standard_pred=True, postprocess_class_agnostic=True, batch=6, verbose=0).object_prediction_list  # noqa
                 else:
                     yolo_model.predict(Image.new('RGB', (1520, 870)), imgsz=1600, conf=0.5, iou=0.1, max_det=10, verbose=False, augment=True)  # warmup
 
@@ -129,7 +129,7 @@ class VLMManager:
             if self.use_sahi:
                 yolo_result = []
                 for image in images:
-                    per_img_result = get_sliced_prediction(image, yolo_model, perform_standard_pred=True, postprocess_class_agnostic=True, verbose=0).object_prediction_list
+                    per_img_result = get_sliced_prediction(image, yolo_model, perform_standard_pred=True, postprocess_class_agnostic=True, batch=6, verbose=0).object_prediction_list
                     per_img_result = [([r.bbox.minx / 1520, r.bbox.miny / 870, r.bbox.maxx / 1520, r.bbox.maxy / 870], r.score.value) for r in per_img_result]
                     yolo_result.append(per_img_result)
             else:

@@ -23,6 +23,10 @@ WORKDIR /workspace
 
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt && rm requirements.txt
+# custom sahi with batching support
+COPY sahi-0.11.18-py3-none-any.whl sahi-0.11.18-py3-none-any.whl
+RUN pip install sahi-0.11.18-py3-none-any.whl
+RUN rm sahi-0.11.18-py3-none-any.whl
 
 # clear cache and unnecessary files
 RUN pip cache purge
