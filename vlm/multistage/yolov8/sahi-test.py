@@ -4,11 +4,12 @@ import time
 
 model = AutoDetectionModel.from_pretrained(
     model_type="yolov8",
-    # model_path='../yolov9e_0.995_0.823_epoch65.pt',
-    model_path='../yolov9c_0.99_0.769.pt',
+    model_path='../yolov9e_0.995_0.823_epoch65.engine',
     confidence_threshold=0.5,
-    image_size=640,
+    image_size=896,
+    standard_pred_image_size=1600,  # not used for TRT as it dont support standard pred
     device="cuda",
+    cfg={"task": 'detect', "names": {'0': 'target'}, "imgsz": (896, 768), "half": True}
 )
 
 from PIL import Image, ImageDraw
@@ -18,7 +19,7 @@ timings = []
 for i in range(10):
     im1 = Image.open(f'../../../data/images/image_{i}.jpg')
     s = time.perf_counter()
-    result = get_sliced_prediction(im1, model, perform_standard_pred=False, postprocess_class_agnostic=True, batch=6, verbose=0).object_prediction_list
+    result = get_sliced_prediction(im1, model, perform_standard_pred=False, postprocess_class_agnostic=True, batch=6, verbose=2).object_prediction_list
     timings.append(time.perf_counter() - s)
 print(timings)
 print(np.mean(timings[1:]))
