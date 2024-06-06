@@ -110,6 +110,18 @@ class TrainValDataset(Dataset):
             self.imgs, self.imgs_hw0, self.imgs_hw = [None] * self.num_imgs, [None] * self.num_imgs, [None] * self.num_imgs
             self.cache_images(num_imgs=self.num_imgs)
 
+        self.albu_transforms = A.Compose([
+            A.GaussNoise(var_limit=2500, p=0.5),
+            A.ISONoise(p=0.5),
+            A.Blur(p=0.1),
+            A.MedianBlur(p=0.1),
+            A.ToGray(p=0.1),
+            A.CLAHE(p=0.1),
+            A.RandomBrightnessContrast(p=0.5),
+            A.RandomGamma(p=0.2),
+            A.ImageCompression(quality_lower=75, p=0.5),
+        ])
+
         tok = time.time()
 
         if self.main_process:
@@ -242,25 +254,12 @@ class TrainValDataset(Dataset):
             boxes[:, 2] = (labels[:, 3] - labels[:, 1]) / w  # width
             boxes[:, 3] = (labels[:, 4] - labels[:, 2]) / h  # height
             labels[:, 1:] = boxes
-            
-        transforms = A.Compose([
-            A.GaussNoise(var_limit=2500, p=0.5),
-            A.ISONoise(p=0.5),
-            A.Blur(p=0.1),
-            A.MedianBlur(p=0.1),
-            A.ToGray(p=0.1),
-            A.CLAHE(p=0.1),
-            A.RandomBrightnessContrast(p=0.5),
-            A.RandomGamma(p=0.2),
-            A.ImageCompression(quality_lower=75, p=0.5),
-        ])
-        
-        # not passing bboxes because none of the above augs affect bboxes
-        transformed = transforms(image=cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-        img = cv2.cvtColor(transformed["image"], cv2.COLOR_RGB2BGR)
 
         if self.augment:
-            img, labels = self.general_augment(img, labels)
+            # not passing bboxes because none of the above augs affect bboxes
+            transformed = self.albu_transforms(image=cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            img, labels = self.general_augment(
+                cv2.cvtColor(transformed["image"], cv2.COLOR_RGB2BGR), labels)
 
         labels_out = torch.zeros((len(labels), 6))
         if len(labels):
