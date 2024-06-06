@@ -189,6 +189,9 @@ class VLMManager:
         bboxes = []
         # combine the results
         for caption, yolo_box, similarity_scores in zip(captions, wbf_boxes, clip_results):
+            if not similarity_scores[caption]:
+                bboxes.append([0, 0, 0, 0])
+                continue
             box_idx = np.argmax(similarity_scores[caption])
             x1, y1, x2, y2 = yolo_box[box_idx]
             # convert to ltwh
