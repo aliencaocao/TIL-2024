@@ -1,3 +1,7 @@
 yolor/data/custom/
+yolor-old/data/custom
+
 yolor/weights/
+yolor/runs/train/**/*.pt
+
 yolor-venv/

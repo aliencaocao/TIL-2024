@@ -1,0 +1,11 @@
+# train and val datasets (image directory or *.txt file with image paths)
+train: data/custom/images/train2017
+val: data/custom/images/val2017
+test: data/custom/images/val2017
+
+# number of classes
+nc: 1
+
+# class names
+names: ['object']
+
