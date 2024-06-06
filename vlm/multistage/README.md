@@ -218,8 +218,8 @@ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.296
 Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.264
 ```
 
-#### YOLOv6l6 augsv3 on own test
-map@0.5 self calculated: 0.8136515912897823
+#### YOLOv6l6 augsv3 on own test conf=0.1
+map@0.5 self calculated: 0.8668614357262103
 ```
 Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.297
 Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.768
@@ -234,6 +234,25 @@ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
 Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.394
 Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.407
 ```
+
+#### YOLOv6l6 augsv3 on own test conf=0.5
+map@0.5 self calculated: 0.7626050420168067
+```
+Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.281
+Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.726
+Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.133
+Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
+Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.249
+Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.372
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.126
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.372
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.372
+Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.366
+Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.391
+```
+
+**Conclusion** Yolov6l6's TPs are of lower conf than v9e which means a lower conf thresh must be used, this increases FPs
 
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + siglip-large-patch16-256
 test set:

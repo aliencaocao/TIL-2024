@@ -70,7 +70,10 @@ class VLMManager:
                 model_type="yolov8",
                 model_path=yolo_path,
                 confidence_threshold=0.5,
-                device="cuda"
+                image_size=896,
+                standard_pred_image_size=1600,  # not used for TRT as it dont support standard pred
+                device="cuda",
+                cfg={"task": 'detect', "names": {'0': 'target'}, "imgsz": (896, 768), "half": True}  # used for TRT only
             ) for yolo_path in yolo_paths]
         else:
             self.yolo_models = [YOLO(yolo_path) for yolo_path in yolo_paths]
@@ -81,7 +84,7 @@ class VLMManager:
         for i in range(3):
             for yolo_model in self.yolo_models:
                 if self.use_sahi:
-                    get_sliced_prediction(Image.new('RGB', (1520, 870)), yolo_model, perform_standard_pred=True, postprocess_class_agnostic=True, batch=6, verbose=0).object_prediction_list  # noqa
+                    get_sliced_prediction(Image.new('RGB', (1520, 870)), yolo_model, perform_standard_pred=False, postprocess_class_agnostic=True, batch=6, verbose=0).object_prediction_list  # noqa
                 else:
                     yolo_model.predict(Image.new('RGB', (1520, 870)), imgsz=1600, conf=0.5, iou=0.1, max_det=10, verbose=False, augment=True)  # warmup
 
@@ -129,7 +132,7 @@ class VLMManager:
             if self.use_sahi:
                 yolo_result = []
                 for image in images:
-                    per_img_result = get_sliced_prediction(image, yolo_model, perform_standard_pred=True, postprocess_class_agnostic=True, batch=6, verbose=0).object_prediction_list
+                    per_img_result = get_sliced_prediction(image, yolo_model, perform_standard_pred=False, postprocess_class_agnostic=True, batch=6, verbose=0).object_prediction_list
                     per_img_result = [([r.bbox.minx / 1520, r.bbox.miny / 870, r.bbox.maxx / 1520, r.bbox.maxy / 870], r.score.value) for r in per_img_result]
                     yolo_result.append(per_img_result)
             else:
@@ -201,7 +204,7 @@ if __name__ == "__main__":
     import orjson
     import base64
 
-    vlm_manager = VLMManager(yolo_paths=['yolov9e_0.995_0.823_epoch65.pt'], clip_path='siglip/siglip-large-epoch5-augv2-upscale_0.892', upscaler_path='real-esrgan/realesr-general-x4v3.pth')
+    vlm_manager = VLMManager(yolo_paths=['yolov9e_0.995_0.823_epoch65.pt'], clip_path='siglip/siglip-large-epoch5-augv2-upscale_0.892', upscaler_path='real-esrgan/realesr-general-x4v3.pth', use_sahi=True)
     all_answers = []
 
     batch_size = 4
