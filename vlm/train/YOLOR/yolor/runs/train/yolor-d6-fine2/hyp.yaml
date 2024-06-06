@@ -18,10 +18,10 @@ hsv_s: 0.7
 hsv_v: 0.4
 degrees: 0.0
 translate: 0.5
-scale: 0.5
+scale: 0.8
 shear: 0.0
 perspective: 0.0
-flipud: 0.0
+flipud: 0.5
 fliplr: 0.5
 mosaic: 1.0
-mixup: 0.0
+mixup: 0.2

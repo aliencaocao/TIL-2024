@@ -357,16 +357,15 @@ def train(hyp, opt, device, tb_writer=None, wandb=None):
                 ema.update_attr(model, include=['yaml', 'nc', 'hyp', 'gr', 'names', 'stride'])
             final_epoch = epoch + 1 == epochs
             if not opt.notest or final_epoch:  # Calculate mAP
-                if epoch >= 3:
-                    results, maps, times = test.test(opt.data,
-                                                 batch_size=batch_size*2,
-                                                 imgsz=imgsz_test,
-                                                 model=ema.ema,
-                                                 single_cls=opt.single_cls,
-                                                 dataloader=testloader,
-                                                 save_dir=save_dir,
-                                                 plots=plots and final_epoch,
-                                                 log_imgs=opt.log_imgs if wandb else 0)
+                results, maps, times = test.test(opt.data,
+                                                batch_size=batch_size*2,
+                                                imgsz=imgsz_test,
+                                                model=ema.ema,
+                                                single_cls=opt.single_cls,
+                                                dataloader=testloader,
+                                                save_dir=save_dir,
+                                                plots=plots and final_epoch,
+                                                log_imgs=opt.log_imgs if wandb else 0)
 
             # Write
             with open(results_file, 'a') as f:
@@ -375,7 +374,7 @@ def train(hyp, opt, device, tb_writer=None, wandb=None):
                 os.system('gsutil cp %s gs://%s/results/results%s.txt' % (results_file, opt.bucket, opt.name))
 
             # Log
-            tags = ['train/box_loss', 'train/obj_loss', 'train/cls_loss',  # train loss
+            tags = ['train/box_loss', 'train/objval_loss', 'train/cls_loss',  # train loss
                     'metrics/precision', 'metrics/recall', 'metrics/mAP_0.5', 'metrics/mAP_0.5:0.95',
                     'val/box_loss', 'val/obj_loss', 'val/cls_loss',  # val loss
                     'x/lr0', 'x/lr1', 'x/lr2']  # params
@@ -442,14 +441,18 @@ def train(hyp, opt, device, tb_writer=None, wandb=None):
                     torch.save(ckpt, wdir / 'best_ap.pt')
                 if best_fitness_f == fi_f:
                     torch.save(ckpt, wdir / 'best_f.pt')
-                if epoch == 0:
-                    torch.save(ckpt, wdir / 'epoch_{:03d}.pt'.format(epoch))
-                if ((epoch+1) % 25) == 0:
-                    torch.save(ckpt, wdir / 'epoch_{:03d}.pt'.format(epoch))
-                if epoch >= (epochs-5):
-                    torch.save(ckpt, wdir / 'last_{:03d}.pt'.format(epoch))
-                elif epoch >= 420:
-                    torch.save(ckpt, wdir / 'last_{:03d}.pt'.format(epoch))
+
+                # save every epoch
+                torch.save(ckpt, wdir / 'epoch_{:03d}.pt'.format(epoch))
+
+                # if epoch == 0:
+                #     torch.save(ckpt, wdir / 'epoch_{:03d}.pt'.format(epoch))
+                # if ((epoch+1) % 25) == 0:
+                #     torch.save(ckpt, wdir / 'epoch_{:03d}.pt'.format(epoch))
+                # if epoch >= (epochs-5):
+                #     torch.save(ckpt, wdir / 'last_{:03d}.pt'.format(epoch))
+                # elif epoch >= 420:
+                #     torch.save(ckpt, wdir / 'last_{:03d}.pt'.format(epoch))
                 del ckpt
         # end epoch ----------------------------------------------------------------------------------------------------
     # end training
@@ -502,13 +505,14 @@ if __name__ == '__main__':
     parser.add_argument('--single-cls', action='store_true', help='train as single-class dataset')
     parser.add_argument('--adam', action='store_true', help='use torch.optim.Adam() optimizer')
     parser.add_argument('--sync-bn', action='store_true', help='use SyncBatchNorm, only available in DDP mode')
-    parser.add_argument('--local_rank', type=int, default=-1, help='DDP parameter, do not modify')
+    parser.add_argument('--local-rank', type=int, default=-1, help='DDP parameter, do not modify')
     parser.add_argument('--log-imgs', type=int, default=16, help='number of images for W&B logging, max 100')
     parser.add_argument('--workers', type=int, default=8, help='maximum number of dataloader workers')
     parser.add_argument('--project', default='runs/train', help='save to project/name')
     parser.add_argument('--name', default='exp', help='save to project/name')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     opt = parser.parse_args()
+    original_opt = opt
 
     # Set DDP variables
     opt.total_batch_size = opt.batch_size
@@ -524,7 +528,8 @@ if __name__ == '__main__':
         assert os.path.isfile(ckpt), 'ERROR: --resume checkpoint does not exist'
         with open(Path(ckpt).parent.parent / 'opt.yaml') as f:
             opt = argparse.Namespace(**yaml.load(f, Loader=yaml.FullLoader))  # replace
-        opt.cfg, opt.weights, opt.resume = '', ckpt, True
+        opt.cfg, opt.weights, opt.resume, opt.local_rank, opt.global_rank = \
+            '', ckpt, True, original_opt.local_rank, original_opt.global_rank
         logger.info('Resuming training from %s' % ckpt)
     else:
         # opt.hyp = opt.hyp or ('hyp.finetune.yaml' if opt.weights else 'hyp.scratch.yaml')
@@ -535,13 +540,13 @@ if __name__ == '__main__':
         opt.save_dir = increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok | opt.evolve)  # increment run
 
     # DDP mode
-    device = select_device(opt.device, batch_size=opt.batch_size)
+    device = select_device(opt.device, batch_size=opt.total_batch_size)
     if opt.local_rank != -1:
         assert torch.cuda.device_count() > opt.local_rank
         torch.cuda.set_device(opt.local_rank)
         device = torch.device('cuda', opt.local_rank)
         dist.init_process_group(backend='nccl', init_method='env://')  # distributed backend
-        assert opt.batch_size % opt.world_size == 0, '--batch-size must be multiple of CUDA device count'
+        assert opt.total_batch_size % opt.world_size == 0, 'total batch size must be multiple of CUDA device count'
         opt.batch_size = opt.total_batch_size // opt.world_size
 
     # Hyperparameters
