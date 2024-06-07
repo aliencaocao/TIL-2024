@@ -117,7 +117,7 @@ class VLMManager:
                 image_size=896,  # not used for TRT. TRT uses cfg below
                 standard_pred_image_size=1600,  # not used for TRT. TRT uses cfg below
                 device="cuda",
-                cfg={"task": 'detect', "names": {'0': 'target'}, "standard_pred_image_size": (960, 1600), "standard_pred_model_path": f'{yolo_path.split(".")[0]}_bs1.engine', "imgsz": (768, 896), "half": True}
+                cfg={"task": 'detect', "names": {'0': 'target'}, "standard_pred_image_size": (960, 1600), "standard_pred_model_path": f'{yolo_path.rsplit(".")[0]}_bs1.engine', "imgsz": (768, 896), "half": True}
             ) for yolo_path in yolo_paths]
         else:
             self.yolo_models = [YOLO(yolo_path) if "yolov6" not in yolo_path else DetectBackend(yolo_path, device=self.device) for yolo_path in yolo_paths]
