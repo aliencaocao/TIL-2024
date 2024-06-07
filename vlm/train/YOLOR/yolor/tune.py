@@ -21,12 +21,11 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 import test  # import test.py to get mAP after each epoch
-#from models.yolo import Model
-from models.models import *
+from models.yolo import Model
 from utils.autoanchor import check_anchors
 from utils.datasets import create_dataloader9 as create_dataloader
 from utils.general import labels_to_class_weights, increment_path, labels_to_image_weights, init_seeds, \
-    fitness, fitness_p, fitness_r, fitness_ap50, fitness_ap, fitness_f, strip_optimizer, get_latest_run,\
+    fitness, fitness_p, fitness_r, fitness_ap50, fitness_ap, fitness_f, strip_optimizer, get_latest_run, \
     check_dataset, check_file, check_git_status, check_img_size, print_mutation, set_logging
 from utils.google_utils import attempt_download
 from utils.loss import compute_loss
@@ -40,6 +39,7 @@ try:
 except ImportError:
     wandb = None
     logger.info("Install Weights & Biases for experiment logging via 'pip install wandb' (recommended)")
+
 
 def train(hyp, opt, device, tb_writer=None, wandb=None):
     logger.info(f'Hyperparameters {hyp}')
@@ -78,12 +78,24 @@ def train(hyp, opt, device, tb_writer=None, wandb=None):
         with torch_distributed_zero_first(rank):
             attempt_download(weights)  # download if not found locally
         ckpt = torch.load(weights, map_location=device)  # load checkpoint
-        model = Darknet(opt.cfg).to(device)  # create
-        state_dict = {k: v for k, v in ckpt['model'].items() if model.state_dict()[k].numel() == v.numel()}
-        model.load_state_dict(state_dict, strict=False)
-        print('Transferred %g/%g items from %s' % (len(state_dict), len(model.state_dict()), weights))  # report
+        if hyp.get('anchors'):
+            ckpt['model'].yaml['anchors'] = round(hyp['anchors'])  # force autoanchor
+        model = Model(opt.cfg or ckpt['model'].yaml, ch=3, nc=nc).to(device)  # create
+        exclude = ['anchor'] if opt.cfg or hyp.get('anchors') else []  # exclude keys
+        state_dict = ckpt['model'].float().state_dict()  # to FP32
+        state_dict = intersect_dicts(state_dict, model.state_dict(), exclude=exclude)  # intersect
+        model.load_state_dict(state_dict, strict=False)  # load
+        logger.info('Transferred %g/%g items from %s' % (len(state_dict), len(model.state_dict()), weights))  # report
     else:
-        model = Darknet(opt.cfg).to(device) # create
+        model = Model(opt.cfg, ch=3, nc=nc).to(device)  # create
+
+    # Freeze
+    freeze = []  # parameter names to freeze (full or partial)
+    for k, v in model.named_parameters():
+        v.requires_grad = True  # train all layers
+        if any(x in k for x in freeze):
+            print('freezing %s' % k)
+            v.requires_grad = False
 
     # Optimizer
     nbs = 64  # nominal batch size
@@ -91,17 +103,33 @@ def train(hyp, opt, device, tb_writer=None, wandb=None):
     hyp['weight_decay'] *= total_batch_size * accumulate / nbs  # scale weight_decay
 
     pg0, pg1, pg2 = [], [], []  # optimizer parameter groups
-    for k, v in dict(model.named_parameters()).items():
-        if '.bias' in k:
-            pg2.append(v)  # biases
-        elif 'Conv2d.weight' in k:
-            pg1.append(v)  # apply weight_decay
-        elif 'm.weight' in k:
-            pg1.append(v)  # apply weight_decay
-        elif 'w.weight' in k:
-            pg1.append(v)  # apply weight_decay
-        else:
-            pg0.append(v)  # all else
+    for k, v in model.named_modules():
+        if hasattr(v, 'bias') and isinstance(v.bias, nn.Parameter):
+            pg2.append(v.bias)  # biases
+        if isinstance(v, nn.BatchNorm2d):
+            pg0.append(v.weight)  # no decay
+        elif hasattr(v, 'weight') and isinstance(v.weight, nn.Parameter):
+            pg1.append(v.weight)  # apply decay
+        if hasattr(v, 'im'):
+            for iv in v.im:
+                pg0.append(iv.implicit)
+        if hasattr(v, 'ia'):
+            for iv in v.ia:
+                pg0.append(iv.implicit)
+        if hasattr(v, 'id'):
+            for iv in v.id:
+                pg0.append(iv.implicit)
+        if hasattr(v, 'iq'):
+            for iv in v.iq:
+                pg0.append(iv.implicit)
+        if hasattr(v, 'ix'):
+            for iv in v.ix:
+                pg0.append(iv.implicit)
+        if hasattr(v, 'ie'):
+            for iv in v.ie:
+                pg0.append(iv.implicit)
+        if hasattr(v, 'ic'):
+            pg0.append(v.ic.implicit)
 
     if opt.adam:
         optimizer = optim.Adam(pg0, lr=hyp['lr0'], betas=(hyp['momentum'], 0.999))  # adjust beta1 to momentum
@@ -158,7 +186,7 @@ def train(hyp, opt, device, tb_writer=None, wandb=None):
         del ckpt, state_dict
 
     # Image sizes
-    gs = 64 #int(max(model.stride))  # grid size (max stride)
+    gs = int(max(model.stride))  # grid size (max stride)
     imgsz, imgsz_test = [check_img_size(x, gs) for x in opt.img_size]  # verify imgsz are gs-multiples
 
     # DP mode
@@ -205,8 +233,8 @@ def train(hyp, opt, device, tb_writer=None, wandb=None):
                     wandb.log({"Labels": [wandb.Image(str(x), caption=x.name) for x in save_dir.glob('*labels*.png')]})
 
             # Anchors
-            # if not opt.noautoanchor:
-            #     check_anchors(dataset, model=model, thr=hyp['anchor_t'], imgsz=imgsz)
+            #if not opt.noautoanchor:
+            #    check_anchors(dataset, model=model, thr=hyp['anchor_t'], imgsz=imgsz)
 
     # Model parameters
     hyp['cls'] *= nc / 80.  # scale coco-tuned hyp['cls'] to current dataset
@@ -227,9 +255,6 @@ def train(hyp, opt, device, tb_writer=None, wandb=None):
     logger.info('Image sizes %g train, %g test\n'
                 'Using %g dataloader workers\nLogging results to %s\n'
                 'Starting training for %g epochs...' % (imgsz, imgsz_test, dataloader.num_workers, save_dir, epochs))
-    
-    torch.save(model, wdir / 'init.pt')
-    
     for epoch in range(start_epoch, epochs):  # epoch ------------------------------------------------------------------
         model.train()
 
@@ -329,14 +354,14 @@ def train(hyp, opt, device, tb_writer=None, wandb=None):
         if rank in [-1, 0]:
             # mAP
             if ema:
-                ema.update_attr(model)
+                ema.update_attr(model, include=['yaml', 'nc', 'hyp', 'gr', 'names', 'stride'])
             final_epoch = epoch + 1 == epochs
             if not opt.notest or final_epoch:  # Calculate mAP
                 if epoch >= 3:
                     results, maps, times = test.test(opt.data,
                                                  batch_size=batch_size*2,
                                                  imgsz=imgsz_test,
-                                                 model=ema.ema.module if hasattr(ema.ema, 'module') else ema.ema,
+                                                 model=ema.ema,
                                                  single_cls=opt.single_cls,
                                                  dataloader=testloader,
                                                  save_dir=save_dir,
@@ -395,7 +420,7 @@ def train(hyp, opt, device, tb_writer=None, wandb=None):
                             'best_fitness_ap': best_fitness_ap,
                             'best_fitness_f': best_fitness_f,
                             'training_results': f.read(),
-                            'model': ema.ema.module.state_dict() if hasattr(ema, 'module') else ema.ema.state_dict(),
+                            'model': ema.ema,
                             'optimizer': None if final_epoch else optimizer.state_dict(),
                             'wandb_id': wandb_run.id if wandb else None}
 
@@ -403,7 +428,7 @@ def train(hyp, opt, device, tb_writer=None, wandb=None):
                 torch.save(ckpt, last)
                 if best_fitness == fi:
                     torch.save(ckpt, best)
-                if (best_fitness == fi) and (epoch >= 200):
+                if (best_fitness == fi) and (epoch >= (200)):
                     torch.save(ckpt, wdir / 'best_{:03d}.pt'.format(epoch))
                 if best_fitness == fi:
                     torch.save(ckpt, wdir / 'best_overall.pt')
@@ -423,7 +448,7 @@ def train(hyp, opt, device, tb_writer=None, wandb=None):
                     torch.save(ckpt, wdir / 'epoch_{:03d}.pt'.format(epoch))
                 if epoch >= (epochs-5):
                     torch.save(ckpt, wdir / 'last_{:03d}.pt'.format(epoch))
-                elif epoch >= 420: 
+                elif epoch >= 420:
                     torch.save(ckpt, wdir / 'last_{:03d}.pt'.format(epoch))
                 del ckpt
         # end epoch ----------------------------------------------------------------------------------------------------
@@ -456,7 +481,7 @@ def train(hyp, opt, device, tb_writer=None, wandb=None):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', type=str, default='yolor_p6.pt', help='initial weights path')
+    parser.add_argument('--weights', type=str, default='yolor-p6.pt', help='initial weights path')
     parser.add_argument('--cfg', type=str, default='', help='model.yaml path')
     parser.add_argument('--data', type=str, default='data/coco.yaml', help='data.yaml path')
     parser.add_argument('--hyp', type=str, default='data/hyp.scratch.1280.yaml', help='hyperparameters path')

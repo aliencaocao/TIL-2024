@@ -73,9 +73,9 @@ def plot_wh_methods():  # from utils.general import *; plot_wh_methods()
     yb = torch.sigmoid(torch.from_numpy(x)).numpy() * 2
 
     fig = plt.figure(figsize=(6, 3), dpi=150)
-    plt.plot(x, ya, '.-', label='YOLO')
-    plt.plot(x, yb ** 2, '.-', label='YOLO ^2')
-    plt.plot(x, yb ** 1.6, '.-', label='YOLO ^1.6')
+    plt.plot(x, ya, '.-', label='YOLOR')
+    plt.plot(x, yb ** 2, '.-', label='YOLOR ^2')
+    plt.plot(x, yb ** 1.6, '.-', label='YOLOR ^1.6')
     plt.xlim(left=-4, right=4)
     plt.ylim(bottom=0, top=6)
     plt.xlabel('input')
@@ -236,7 +236,7 @@ def plot_study_txt(f='study.txt', x=None):  # from utils.general import *; plot_
     ax = ax.ravel()
 
     fig2, ax2 = plt.subplots(1, 1, figsize=(8, 4), tight_layout=True)
-    for f in ['study/study_coco_yolo%s.txt' % x for x in ['s', 'm', 'l', 'x']]:
+    for f in ['study/study_coco_yolor%s.txt' % x for x in ['s', 'm', 'l', 'x']]:
         y = np.loadtxt(f, dtype=np.float32, usecols=[0, 1, 2, 3, 7, 8, 9], ndmin=2).T
         x = np.arange(y.shape[1]) if x is None else np.array(x)
         s = ['P', 'R', 'mAP@.5', 'mAP@.5:.95', 't_inference (ms/img)', 't_NMS (ms/img)', 't_total (ms/img)']
@@ -351,11 +351,11 @@ def plot_results(start=0, stop=0, bucket='', id=(), labels=(), save_dir=''):
     if bucket:
         # os.system('rm -rf storage.googleapis.com')
         # files = ['https://storage.googleapis.com/%s/results%g.txt' % (bucket, x) for x in id]
-        files = ['%g.txt' % x for x in id]
-        c = ('gsutil cp ' + '%s ' * len(files) + '.') % tuple('gs://%s/%g.txt' % (bucket, x) for x in id)
+        files = ['results%g.txt' % x for x in id]
+        c = ('gsutil cp ' + '%s ' * len(files) + '.') % tuple('gs://%s/results%g.txt' % (bucket, x) for x in id)
         os.system(c)
     else:
-        files = glob.glob(str(Path(save_dir) / '*.txt')) + glob.glob('../../Downloads/results*.txt')
+        files = glob.glob(str(Path(save_dir) / 'results*.txt')) + glob.glob('../../Downloads/results*.txt')
     assert len(files), 'No results.txt files found in %s, nothing to plot.' % os.path.abspath(save_dir)
     for fi, f in enumerate(files):
         try:

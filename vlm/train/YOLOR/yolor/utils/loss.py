@@ -3,7 +3,7 @@
 import torch
 import torch.nn as nn
 
-from utils.general import bbox_iou
+from utils.general import bbox_iou, wh_iou
 from utils.torch_utils import is_parallel
 
 
@@ -82,6 +82,7 @@ def compute_loss(p, targets, model):  # predictions, targets, model
     nt = 0  # number of targets
     no = len(p)  # number of outputs
     balance = [4.0, 1.0, 0.4] if no == 3 else [4.0, 1.0, 0.4, 0.1]  # P3-5 or P3-6
+    #balance = [4.0, 1.0, 0.4] if no == 3 else [4.0, 1.0, 0.25, 0.06]  # P3-5 or P3-6 new
     balance = [4.0, 1.0, 0.5, 0.4, 0.1] if no == 5 else balance
     for i, pi in enumerate(p):  # layer index, layer predictions
         b, a, gj, gi = indices[i]  # image, anchor, gridy, gridx
@@ -125,35 +126,44 @@ def compute_loss(p, targets, model):  # predictions, targets, model
 
 
 def build_targets(p, targets, model):
-    nt = targets.shape[0]  # number of anchors, targets
+    # Build targets for compute_loss(), input targets(image,class,x,y,w,h)
+    det = model.module.model[-1] if is_parallel(model) else model.model[-1]  # Detect() module
+    na, nt = det.na, targets.shape[0]  # number of anchors, targets
     tcls, tbox, indices, anch = [], [], [], []
-    gain = torch.ones(6, device=targets.device)  # normalized to gridspace gain
-    off = torch.tensor([[1, 0], [0, 1], [-1, 0], [0, -1]], device=targets.device).float()  # overlap offsets
+    gain = torch.ones(7, device=targets.device)  # normalized to gridspace gain
+    ai = torch.arange(na, device=targets.device).float().view(na, 1).repeat(1, nt)  # same as .repeat_interleave(nt)
+    targets = torch.cat((targets.repeat(na, 1, 1), ai[:, :, None]), 2)  # append anchor indices
 
-    g = 0.5  # offset
-    multi_gpu = is_parallel(model)
-    for i, jj in enumerate(model.module.yolo_layers if multi_gpu else model.yolo_layers):
-        # get number of grid points and anchor vec for this yolo layer
-        anchors = model.module.module_list[jj].anchor_vec if multi_gpu else model.module_list[jj].anchor_vec
-        gain[2:] = torch.tensor(p[i].shape)[[3, 2, 3, 2]]  # xyxy gain
+    g = 0.5  # bias
+    off = torch.tensor([[0, 0],
+                        [1, 0], [0, 1], [-1, 0], [0, -1],  # j,k,l,m
+                        # [1, 1], [1, -1], [-1, 1], [-1, -1],  # jk,jm,lk,lm
+                        ], device=targets.device).float() * g  # offsets
+
+    for i in range(det.nl):
+        anchors = det.anchors[i]
+        gain[2:6] = torch.tensor(p[i].shape)[[3, 2, 3, 2]]  # xyxy gain
 
         # Match targets to anchors
-        a, t, offsets = [], targets * gain, 0
+        t = targets * gain
         if nt:
-            na = anchors.shape[0]  # number of anchors
-            at = torch.arange(na).view(na, 1).repeat(1, nt)  # anchor tensor, same as .repeat_interleave(nt)
-            r = t[None, :, 4:6] / anchors[:, None]  # wh ratio
+            # Matches
+            r = t[:, :, 4:6] / anchors[:, None]  # wh ratio
             j = torch.max(r, 1. / r).max(2)[0] < model.hyp['anchor_t']  # compare
-            # j = wh_iou(anchors, t[:, 4:6]) > model.hyp['iou_t']  # iou(3,n) = wh_iou(anchors(3,2), gwh(n,2))
-            a, t = at[j], t.repeat(na, 1, 1)[j]  # filter
+            # j = wh_iou(anchors, t[:, 4:6]) > model.hyp['iou_t']  # iou(3,n)=wh_iou(anchors(3,2), gwh(n,2))
+            t = t[j]  # filter
 
-            # overlaps
+            # Offsets
             gxy = t[:, 2:4]  # grid xy
-            z = torch.zeros_like(gxy)
+            gxi = gain[[2, 3]] - gxy  # inverse
             j, k = ((gxy % 1. < g) & (gxy > 1.)).T
-            l, m = ((gxy % 1. > (1 - g)) & (gxy < (gain[[2, 3]] - 1.))).T
-            a, t = torch.cat((a, a[j], a[k], a[l], a[m]), 0), torch.cat((t, t[j], t[k], t[l], t[m]), 0)
-            offsets = torch.cat((z, z[j] + off[0], z[k] + off[1], z[l] + off[2], z[m] + off[3]), 0) * g
+            l, m = ((gxi % 1. < g) & (gxi > 1.)).T
+            j = torch.stack((torch.ones_like(j), j, k, l, m))
+            t = t.repeat((5, 1, 1))[j]
+            offsets = (torch.zeros_like(gxy)[None] + off[:, None])[j]
+        else:
+            t = targets[0]
+            offsets = 0
 
         # Define
         b, c = t[:, :2].long().T  # image, class
@@ -163,11 +173,10 @@ def build_targets(p, targets, model):
         gi, gj = gij.T  # grid xy indices
 
         # Append
-        #indices.append((b, a, gj, gi))  # image, anchor, grid indices
-        indices.append((b, a, gj.clamp_(0, gain[3] - 1), gi.clamp_(0, gain[2] - 1)))  # image, anchor, grid indices
+        a = t[:, 6].long()  # anchor indices
+        indices.append((b, a, gj.clamp_(0, gain[3].to(torch.int64) - 1), gi.clamp_(0, gain[2].to(torch.int64) - 1)))  # image, anchor, grid indices
         tbox.append(torch.cat((gxy - gij, gwh), 1))  # box
         anch.append(anchors[a])  # anchors
         tcls.append(c)  # class
 
     return tcls, tbox, indices, anch
-

@@ -21,7 +21,7 @@ def attempt_download(weights):
     file = Path(weights).name
 
     msg = weights + ' missing, try downloading from https://github.com/WongKinYiu/yolor/releases/'
-    models = ['yolor_p6.pt', 'yolor_w6.pt']  # available models
+    models = ['yolor-p6.pt', 'yolor-w6.pt', 'yolor-e6.pt', 'yolor-d6.pt']  # available models
 
     if file in models and not os.path.isfile(weights):
 
@@ -33,22 +33,7 @@ def attempt_download(weights):
         except Exception as e:  # GCP
             print('ERROR: Download failure.')
             print('')
-            
-            
-def attempt_load(weights, map_location=None):
-    # Loads an ensemble of models weights=[a,b,c] or a single model weights=[a] or weights=a
-    model = Ensemble()
-    for w in weights if isinstance(weights, list) else [weights]:
-        attempt_download(w)
-        model.append(torch.load(w, map_location=map_location)['model'].float().fuse().eval())  # load FP32 model
-
-    if len(model) == 1:
-        return model[-1]  # return model
-    else:
-        print('Ensemble created with %s\n' % weights)
-        for k in ['names', 'stride']:
-            setattr(model, k, getattr(model[-1], k))
-        return model  # return ensemble
+            return
 
 
 def gdrive_download(id='1n_oKgR81BJtqk75b00eAjdv03qVCQn2f', name='coco128.zip'):

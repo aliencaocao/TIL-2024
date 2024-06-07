@@ -22,9 +22,12 @@ import pickle
 from copy import deepcopy
 from pycocotools import mask as maskUtils
 from torchvision.utils import save_image
+from torchvision.ops import roi_pool, roi_align, ps_roi_pool, ps_roi_align
 
 from utils.general import xyxy2xywh, xywh2xyxy
 from utils.torch_utils import torch_distributed_zero_first
+
+import albumentations as A
 
 # Parameters
 help_url = 'https://github.com/ultralytics/yolov5/wiki/Train-Custom-Data'
@@ -144,7 +147,7 @@ class _RepeatSampler(object):
 
 
 class LoadImages:  # for inference
-    def __init__(self, path, img_size=640, auto_size=32):
+    def __init__(self, path, img_size=640, auto_size=64):
         p = str(Path(path))  # os-agnostic
         p = os.path.abspath(p)  # absolute path
         if '*' in p:
@@ -366,6 +369,18 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         self.mosaic_border = [-img_size // 2, -img_size // 2]
         self.stride = stride
 
+        self.albu_transforms = A.Compose([
+            A.GaussNoise(var_limit=2500, p=0.5),
+            A.ISONoise(p=0.5),
+            A.Blur(p=0.1),
+            A.MedianBlur(p=0.1),
+            A.ToGray(p=0.1),
+            A.CLAHE(p=0.1),
+            A.RandomBrightnessContrast(p=0.5),
+            A.RandomGamma(p=0.2),
+            A.ImageCompression(quality_lower=75, p=0.5),
+        ])
+
         def img2label_paths(img_paths):
             # Define label paths as a function of image paths
             sa, sb = os.sep + 'images' + os.sep, os.sep + 'labels' + os.sep  # /images/, /labels/ substrings
@@ -408,7 +423,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         self.label_files = img2label_paths(cache.keys())  # update
 
         n = len(shapes)  # number of images
-        bi = np.floor(np.arange(n) / batch_size).astype(np.int)  # batch index
+        bi = np.floor(np.arange(n) / batch_size).astype(int)  # batch index
         nb = bi[-1] + 1  # number of batches
         self.batch = bi  # batch index of image
         self.n = n
@@ -435,7 +450,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                 elif mini > 1:
                     shapes[i] = [1, 1 / mini]
 
-            self.batch_shapes = np.ceil(np.array(shapes) * img_size / stride + pad).astype(np.int) * stride
+            self.batch_shapes = np.ceil(np.array(shapes) * img_size / stride + pad).astype(int) * stride
 
         # Check labels
         create_datasubset, extract_bounding_boxes, labels_loaded = False, False, False
@@ -481,7 +496,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                         b = x[1:] * [w, h, w, h]  # box
                         b[2:] = b[2:].max()  # rectangle to square
                         b[2:] = b[2:] * 1.3 + 30  # pad
-                        b = xywh2xyxy(b.reshape(-1, 4)).ravel().astype(np.int)
+                        b = xywh2xyxy(b.reshape(-1, 4)).ravel().astype(int)
 
                         b[[0, 2]] = np.clip(b[[0, 2]], 0, w)  # clip boxes outside of image
                         b[[1, 3]] = np.clip(b[[1, 3]], 0, h)
@@ -607,6 +622,8 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
             labels[:, [1, 3]] /= img.shape[1]  # normalized width 0-1
 
         if self.augment:
+            img = self.albu_transforms(image=img)["image"]
+
             # flip up-down
             if random.random() < hyp['flipud']:
                 img = np.flipud(img)
@@ -648,6 +665,18 @@ class LoadImagesAndLabels9(Dataset):  # for training/testing
         self.mosaic = self.augment and not self.rect  # load 4 images at a time into a mosaic (only during training)
         self.mosaic_border = [-img_size // 2, -img_size // 2]
         self.stride = stride
+
+        self.albu_transforms = A.Compose([
+            A.GaussNoise(var_limit=2500, p=0.5),
+            A.ISONoise(p=0.5),
+            A.Blur(p=0.1),
+            A.MedianBlur(p=0.1),
+            A.ToGray(p=0.1),
+            A.CLAHE(p=0.1),
+            A.RandomBrightnessContrast(p=0.5),
+            A.RandomGamma(p=0.2),
+            A.ImageCompression(quality_lower=75, p=0.5),
+        ])
 
         def img2label_paths(img_paths):
             # Define label paths as a function of image paths
@@ -691,7 +720,7 @@ class LoadImagesAndLabels9(Dataset):  # for training/testing
         self.label_files = img2label_paths(cache.keys())  # update
 
         n = len(shapes)  # number of images
-        bi = np.floor(np.arange(n) / batch_size).astype(np.int)  # batch index
+        bi = np.floor(np.arange(n) / batch_size).astype(int)  # batch index
         nb = bi[-1] + 1  # number of batches
         self.batch = bi  # batch index of image
         self.n = n
@@ -718,7 +747,7 @@ class LoadImagesAndLabels9(Dataset):  # for training/testing
                 elif mini > 1:
                     shapes[i] = [1, 1 / mini]
 
-            self.batch_shapes = np.ceil(np.array(shapes) * img_size / stride + pad).astype(np.int) * stride
+            self.batch_shapes = np.ceil(np.array(shapes) * img_size / stride + pad).astype(int) * stride
 
         # Check labels
         create_datasubset, extract_bounding_boxes, labels_loaded = False, False, False
@@ -764,7 +793,7 @@ class LoadImagesAndLabels9(Dataset):  # for training/testing
                         b = x[1:] * [w, h, w, h]  # box
                         b[2:] = b[2:].max()  # rectangle to square
                         b[2:] = b[2:] * 1.3 + 30  # pad
-                        b = xywh2xyxy(b.reshape(-1, 4)).ravel().astype(np.int)
+                        b = xywh2xyxy(b.reshape(-1, 4)).ravel().astype(int)
 
                         b[[0, 2]] = np.clip(b[[0, 2]], 0, w)  # clip boxes outside of image
                         b[[1, 3]] = np.clip(b[[1, 3]], 0, h)
@@ -890,6 +919,8 @@ class LoadImagesAndLabels9(Dataset):  # for training/testing
             labels[:, [1, 3]] /= img.shape[1]  # normalized width 0-1
 
         if self.augment:
+            img = self.albu_transforms(image=img)["image"]
+
             # flip up-down
             if random.random() < hyp['flipud']:
                 img = np.flipud(img)
@@ -1293,5 +1324,3 @@ def flatten_recursive(path='../coco128'):
     create_folder(new_path)
     for file in tqdm(glob.glob(str(Path(path)) + '/**/*.*', recursive=True)):
         shutil.copyfile(file, new_path / Path(file).name)
-
-
