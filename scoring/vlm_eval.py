@@ -2,7 +2,7 @@
 
 
 from statistics import mean
-from typing import List
+from typing import List, Optional
 
 
 def bb_iou(bb1: Optional[List[int]], bb2: List[int]) -> int:

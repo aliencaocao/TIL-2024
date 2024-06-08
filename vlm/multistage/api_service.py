@@ -7,12 +7,12 @@ from VLMManager import VLMManager
 app = FastAPI()
 
 vlm_manager = VLMManager(
-    yolo_paths=['yolov6l6_epoch22_notpruned.pt', 'yolov9e_0.995_0.823_epoch65.pt'],
-    #yolo_paths=['29_ckpt_yolov6l6_blind.pt'],
+    yolo_paths=['29_ckpt_yolov6l6_blind.pt'],
+    #yolo_paths=['yolov6l6_epoch22_notpruned.pt'],
     #yolo_paths=['best_yolov6l6.pt'],
     clip_path='siglip-large-patch16-384-ft',
     upscaler_path='realesr-general-x4v3.pth',
-    use_sahi=False,
+    use_sahi=True,
 )
 
 
