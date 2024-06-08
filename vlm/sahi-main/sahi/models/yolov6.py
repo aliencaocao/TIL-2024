@@ -201,19 +201,17 @@ class Yolov6DetectionModel:
         """
 
         self._object_prediction_list_per_image = [
-            [
-                [
-                    ObjectPrediction(
-                        bbox=xyxy,
-                        category_id=cls,
-                        score=conf,
-                        segmentation=None,
-                        category_name=self.category_mapping[str(cls)],
-                        shift_amount=shift_amount,
-                        full_shape=full_shape,
-                    ) for *xyxy, conf, cls in single_img_pred
-                ] for single_img_pred in self._original_predictions
-            ] for shift_amount, full_shape in zip(shift_amount_list, full_shape_list)
+            [ObjectPrediction(
+                bbox=xyxy,
+                category_id=cls,
+                score=conf,
+                segmentation=None,
+                category_name=self.category_mapping[str(cls)],
+                shift_amount=shift_amount,
+                full_shape=full_shape,
+            ) for *xyxy, conf, cls in single_img_pred]
+            for single_img_pred, shift_amount, full_shape 
+            in zip(self._original_predictions, shift_amount_list, full_shape_list)
         ]
 
     def _apply_category_remapping(self):
