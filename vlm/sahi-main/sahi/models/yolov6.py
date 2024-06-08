@@ -170,7 +170,7 @@ class Yolov6DetectionModel:
             conf_thres=self.confidence_threshold,
             iou_thres=self.iou_threshold,
             classes=None,
-            agnostic_nms=False,
+            agnostic=False,
             max_det=1000,
         )
 
