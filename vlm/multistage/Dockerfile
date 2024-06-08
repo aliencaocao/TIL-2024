@@ -23,6 +23,7 @@ WORKDIR /workspace
 
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt && rm requirements.txt
+RUN pip install git+https://github.com/aliencaocao/torch2trt.git@patch-1
 # custom sahi with batching support
 COPY sahi-0.11.18-py3-none-any.whl sahi-0.11.18-py3-none-any.whl
 RUN pip install sahi-0.11.18-py3-none-any.whl
