@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import math
 import torch
+import itertools
 
 # This works locally because yolov6 folder is in repo but gitignored.
 # It also works in container because yolov6 folder is copied to /workspace
@@ -140,7 +141,7 @@ class Yolov6DetectionModel:
 
             empty_cuda_cache()
 
-    def perform_inference(self, images: List[np.ndarray]):
+    def perform_inference(self, images: List[np.ndarray], num_batch: int = 1):
         """
         This function should be implemented in a way that prediction should be
         performed using self.model and the prediction result should be set to self._original_predictions.
@@ -159,7 +160,9 @@ class Yolov6DetectionModel:
         images = images.half() if self.half else images.float()
         images /= 255
 
-        pred_results = self.model(images)
+        pred_results = itertools.chain.from_iterable(
+            self.model(batch) for batch in torch.split(images, num_batch)
+        )
         
         # SETTINGS HERE
         det = non_max_suppression(
