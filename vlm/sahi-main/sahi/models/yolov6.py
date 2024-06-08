@@ -199,7 +199,7 @@ class Yolov6DetectionModel:
                 Size of the full image after shifting, should be in the form of
                 List[[height, width],[height, width],...]
         """
-        
+
         self._object_prediction_list_per_image = [
             [
                 [
@@ -207,8 +207,8 @@ class Yolov6DetectionModel:
                         bbox=xyxy,
                         category_id=cls,
                         score=conf,
-                        bool_mask=None,
-                        category_name=str(cls),
+                        segmentation=None,
+                        category_name=self.category_mapping[str(cls)],
                         shift_amount=shift_amount,
                         full_shape=full_shape,
                     ) for *xyxy, conf, cls in single_img_pred
