@@ -35,26 +35,6 @@ def check_img_size(img_size, s=32, floor=0):
         print(f'WARNING: --img-size {img_size} must be multiple of max stride {s}, updating to {new_size}')
     return new_size if isinstance(img_size,list) else [new_size]*2
 
-
-def process_image(path, img_size, stride, half):
-    '''Process image before image inference.'''
-    try:
-        from PIL import Image
-        img_src = np.asarray(Image.open(requests.get(path, stream=True).raw))
-        assert img_src is not None, f'Invalid image: {path}'
-    except Exception as e:
-        LOGGER.Warning(e)
-    image = letterbox(img_src, img_size, stride=stride)[0]
-
-    # Convert
-    image = image.transpose((2, 0, 1))  # HWC to CHW
-    image = torch.from_numpy(np.ascontiguousarray(image))
-    image = image.half() if half else image.float()  # uint8 to fp16/32
-    image /= 255  # 0 - 255 to 0.0 - 1.0
-
-    return image, img_src
-
-
 class Yolov6DetectionModel:
     def __init__(
         self,
@@ -170,10 +150,9 @@ class Yolov6DetectionModel:
         assert len(images) > 0
 
         for i in range(len(images)):
-            orig_shape = images[i].shape[:2]
-            img_size = check_img_size(list(images[i].shape[:-1]))
-            images[i] = letterbox(images[i], img_size, stride=self.model.stride)[0]
-            images[i] = images[i].transpose((2, 0, 1)) # HWC to CHW
+            images[i] = letterbox(
+                images[i], check_img_size(self.image_size), stride=self.model.stride
+            )[0].transpose((2, 0, 1)) # HWC to CHW
 
         images = torch.from_numpy(np.ascontiguousarray(images))
         images = images.half() if self.half else images.float()
@@ -192,7 +171,7 @@ class Yolov6DetectionModel:
         )
 
         det[:, :, :4] = [
-            Inferer.rescale(image.shape[2:], det[:, :4], orig_shape).round()
+            Inferer.rescale(image.shape[2:], det[:, :4], self.image_size).round()
             for image in images
         ]
 
