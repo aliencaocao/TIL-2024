@@ -191,30 +191,42 @@ class VLMManager:
                     img, img_src = process_image(img=image, img_size=img_size, stride=yolo_model.stride, half=True)
                     img = img.to(self.device)
                     if len(img.shape) == 3:
-                        img = img[None]
-                        # expand for batch dim
+                        img = img[None] # expand for batch dim    
                     pred_results = yolo_model(img)
-                    classes:Optional[List[int]] = None # the classes to keep
-                    conf_thres: float =.01
-                    iou_thres: float =.3
-                    max_det:int =  1000
+                    
+                    classes: Optional[List[int]] = None # the classes to keep
+                    nms_conf_thres: float = 0.01
+                    iou_thres: float = 0.3
+                    max_det: int = 10
                     agnostic_nms: bool = False
-                    det = non_max_suppression(pred_results, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
+                    
+                    det = non_max_suppression(pred_results, nms_conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
                     gn = torch.tensor(img_src.shape)[[1, 0, 1, 0]]  # normalization gain whwh
                     img_ori = img_src.copy()
+                    
+                    filter_conf_thres = 0.5
+
                     curr_img_detections = []
                     if len(det):
                         det[:, :4] = Inferer.rescale(img.shape[2:], det[:, :4], img_src.shape).round()
-                        for *xyxy, conf, cls in reversed(det):
-                            xyxy = [xyxy[0] / 1520, xyxy[1] / 870, xyxy[2] / 1520, xyxy[3] / 870]
-                            if conf.item() >= 0.5:
-                                curr_img_detections.append([[x.item() for x in xyxy], conf.item()])
+                        
+                        norm_tensor = torch.tensor([1520, 870, 1520, 870])
+                        curr_img_detections = [
+                            [[x.item() for x in torch.tensor(xyxy) / norm_tensor], conf.item()]
+                            for *xyxy, conf, cls in reversed(det)
+                            if conf.item() >= filter_conf_thres
+                        ]
+                        if not curr_img_detections:
+                            # nothing passes filter_conf_thres so just use the highest conf pred
+                            *xyxy, conf, cls = det[-1]
+                            curr_img_detections = [[[x.item() for x in torch.tensor(xyxy) / norm_tensor], conf.item()]]
+                        
                     yolo_result.append(curr_img_detections)
             else:
                 yolo_result = yolo_model.predict(images, imgsz=1600, conf=0.5, iou=0.1, max_det=10, verbose=False, augment=True)
                 yolo_result = [(r.boxes.xyxyn.tolist(), r.boxes.conf.tolist()) for r in yolo_result]  # WBF need normalized xyxy
                 yolo_result = [tuple(zip(*r)) for r in yolo_result]  # list of tuple[box, conf] in each image
-                print(yolo_result)
+ 
             yolo_results.append(yolo_result)
         
         wbf_boxes = []

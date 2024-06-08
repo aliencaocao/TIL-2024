@@ -710,9 +710,15 @@ WBF with epoch62 and 65 at 1600 0.2, 1:
 
 The epoch 62 model dragging it down. Dropping reso to 1536 makes it worse.
 
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled-v2
+Same as above 0.884 but with training data upscaled 4x using real-esrgan x4v3 (pad=10 with image < 10 upscaled with pad=1)
+- Accuracy: 0.89
+- Speed Score: 0.6588264529629629
+
+Worse than epoch5v1 upscaled cont 5ep below. Might be overfitting due to reduction in variance in training data by upscaling all images.
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled-cont-5ep
-Continued from above 0.894 for 5 more epoch
+Continued from above 0.894 for 5 more epoch but with training data upscaled 4x using real-esrgan x4v3 (pad=10 with image < 10 upscaled with pad=1)
 
 No SAHI conf=0.1:
 - Accuracy: 0.889
