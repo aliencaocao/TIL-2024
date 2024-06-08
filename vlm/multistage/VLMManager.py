@@ -4,11 +4,10 @@
 import gc
 import io
 import logging
-import os, requests, torch, math, cv2
-import PIL
+import math
 import sys
+
 sys.path.insert(0, ".")
-from yolov6.utils.events import LOGGER, load_yaml
 from yolov6.layers.common import DetectBackend
 from yolov6.data.data_augment import letterbox
 from yolov6.utils.nms import non_max_suppression
@@ -70,10 +69,12 @@ class CustomPipeline(ZeroShotImageClassificationPipeline):
         ]
         return result
 
+
 def check_img_size(img_size, s=32, floor=0):
-    def make_divisible( x, divisor):
+    def make_divisible(x, divisor):
         # Upward revision the value x to make it evenly divisible by the divisor.
         return math.ceil(x / divisor) * divisor
+
     """Make sure image size is a multiple of stride s in each dimension, and return a new shape list of image."""
     if isinstance(img_size, int):  # integer i.e. img_size=640
         new_size = max(make_divisible(img_size, int(s)), floor)
@@ -84,10 +85,11 @@ def check_img_size(img_size, s=32, floor=0):
 
     if new_size != img_size:
         print(f'WARNING: --img-size {img_size} must be multiple of max stride {s}, updating to {new_size}')
-    return new_size if isinstance(img_size,list) else [new_size]*2
+    return new_size if isinstance(img_size, list) else [new_size] * 2
+
 
 def process_image(img, img_size, stride, half):
-    '''Process image before image inference.'''
+    """Process image before image inference."""
     img_src = np.asarray(img)
     image = letterbox(img_src, img_size, stride=stride)[0]
 
@@ -99,11 +101,12 @@ def process_image(img, img_size, stride, half):
 
     return image, img_src
 
+
 class VLMManager:
     def __init__(self, yolo_paths: list[str], clip_path: str, upscaler_path: str, use_sahi: bool = True):
         logging.info(f'Loading {len(yolo_paths)} YOLO models from {yolo_paths}. Using SAHI: {use_sahi}')
         self.device = torch.device('cuda:0')
-        
+
         self.use_sahi = use_sahi
         if self.use_sahi:
             self.yolo_models = [AutoDetectionModel.from_pretrained(
@@ -132,12 +135,12 @@ class VLMManager:
                 if self.use_sahi:
                     get_sliced_prediction(Image.new('RGB', (1520, 870)), yolo_model, perform_standard_pred=True, postprocess_class_agnostic=True, batch=6, verbose=0).object_prediction_list  # noqa
                 elif is_yolov6:
-                    stride = yolo_model.stride
-                    warmup_img_size = check_img_size([1520, 870], s=32)
+                    warmup_img_size = check_img_size([1520, 870], s=yolo_model.stride)
                     yolo_model.model.half()
                     yolo_model(torch.zeros(1, 3, *warmup_img_size).to(self.device).type_as(next(yolo_model.model.parameters())))  # warmup
                 else:
                     yolo_model.predict(Image.new('RGB', (1520, 870)), imgsz=1600, conf=0.5, iou=0.1, max_det=10, verbose=False, augment=True)  # warmup
+
         logging.info(f'Loading upscaler model from {upscaler_path}')
         rrdb_net = SRVGGNetCompact(num_in_ch=3, num_out_ch=3, num_feat=64, num_conv=32, upscale=4, act_type='prelu')
         self.upscaler_pad10 = RealESRGANer(
@@ -191,25 +194,25 @@ class VLMManager:
                     img, img_src = process_image(img=image, img_size=img_size, stride=yolo_model.stride, half=True)
                     img = img.to(self.device)
                     if len(img.shape) == 3:
-                        img = img[None] # expand for batch dim    
+                        img = img[None]  # expand for batch dim
                     pred_results = yolo_model(img)
-                    
-                    classes: Optional[List[int]] = None # the classes to keep
+
+                    classes: Optional[List[int]] = None  # the classes to keep
                     nms_conf_thres: float = 0.01
                     iou_thres: float = 0.3
                     max_det: int = 10
                     agnostic_nms: bool = False
-                    
+
                     det = non_max_suppression(pred_results, nms_conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
                     gn = torch.tensor(img_src.shape)[[1, 0, 1, 0]]  # normalization gain whwh
                     img_ori = img_src.copy()
-                    
+
                     filter_conf_thres = 0.5
 
                     curr_img_detections = []
                     if len(det):
                         det[:, :4] = Inferer.rescale(img.shape[2:], det[:, :4], img_src.shape).round()
-                        
+
                         norm_tensor = torch.tensor([1520, 870, 1520, 870])
                         curr_img_detections = [
                             [[x.item() for x in torch.tensor(xyxy) / norm_tensor], conf.item()]
@@ -220,15 +223,15 @@ class VLMManager:
                             # nothing passes filter_conf_thres so just use the highest conf pred
                             *xyxy, conf, cls = det[-1]
                             curr_img_detections = [[[x.item() for x in torch.tensor(xyxy) / norm_tensor], conf.item()]]
-                        
+
                     yolo_result.append(curr_img_detections)
             else:
                 yolo_result = yolo_model.predict(images, imgsz=1600, conf=0.5, iou=0.1, max_det=10, verbose=False, augment=True)
                 yolo_result = [(r.boxes.xyxyn.tolist(), r.boxes.conf.tolist()) for r in yolo_result]  # WBF need normalized xyxy
                 yolo_result = [tuple(zip(*r)) for r in yolo_result]  # list of tuple[box, conf] in each image
- 
+
             yolo_results.append(yolo_result)
-        
+
         wbf_boxes = []
         for i, img in enumerate(images):
             boxes_list = []

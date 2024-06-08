@@ -712,6 +712,10 @@ The epoch 62 model dragging it down. Dropping reso to 1536 makes it worse.
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled-v2
 Same as above 0.884 but with training data upscaled 4x using real-esrgan x4v3 (pad=10 with image < 10 upscaled with pad=1)
+
+test set:
+
+no sahi conf=0.5:
 - Accuracy: 0.89
 - Speed Score: 0.6588264529629629
 
