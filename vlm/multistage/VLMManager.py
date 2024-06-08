@@ -117,7 +117,7 @@ class VLMManager:
                 image_size=896,  # not used for TRT. TRT uses cfg below
                 standard_pred_image_size=1600,  # not used for TRT. TRT uses cfg below
                 device="cuda",
-                cfg={"task": 'detect', "names": {'0': 'target'}, "standard_pred_image_size": (960, 1600), "standard_pred_model_path": f'{yolo_path.rsplit(".")[0]}_bs1.engine', "imgsz": (768, 896), "half": True}
+                cfg={"task": 'detect', "names": {'0': 'target'}, "standard_pred_image_size": (960, 1600), "standard_pred_model_path": f'{yolo_path.rsplit(".", 1)[0]}_bs1.engine', "imgsz": (768, 896), "half": True}
             ) for yolo_path in yolo_paths]
         else:
             self.yolo_models = [YOLO(yolo_path) if "yolov6" not in yolo_path else DetectBackend(yolo_path, device=self.device) for yolo_path in yolo_paths]
@@ -132,16 +132,14 @@ class VLMManager:
 
         logging.info(f'Warming up YOLO')
         for i in range(3):
-            ctr = 0
-            for yolo_model in self.yolo_models:
+            for isyolov6, yolo_model in zip(self.isyolov6, self.yolo_models):
                 if self.use_sahi:
                     get_sliced_prediction(Image.new('RGB', (1520, 870)), yolo_model, perform_standard_pred=True, postprocess_class_agnostic=True, batch=6, verbose=0).object_prediction_list  # noqa
-                elif self.isyolov6[ctr]:
+                elif isyolov6:
                     warmup_img_size = check_img_size([1520, 870], s=yolo_model.stride)
                     yolo_model(torch.zeros(1, 3, *warmup_img_size).to(self.device).type_as(next(yolo_model.model.parameters())))  # warmup
                 else:
                     yolo_model.predict(Image.new('RGB', (1520, 870)), imgsz=1600, conf=0.5, iou=0.1, max_det=10, verbose=False, augment=True)  # warmup
-                ctr += 1
         logging.info(f'Loading upscaler model from {upscaler_path}')
         rrdb_net = SRVGGNetCompact(num_in_ch=3, num_out_ch=3, num_feat=64, num_conv=32, upscale=4, act_type='prelu')
         self.upscaler_pad10 = RealESRGANer(
