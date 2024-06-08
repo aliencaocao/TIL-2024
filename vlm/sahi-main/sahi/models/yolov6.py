@@ -156,7 +156,7 @@ class Yolov6DetectionModel:
                 images[i], check_img_size(self.image_size), stride=self.model.stride
             )[0].transpose((2, 0, 1)) # HWC to CHW
 
-        images = torch.from_numpy(np.ascontiguousarray(images))
+        images = torch.from_numpy(np.ascontiguousarray(images)).to(self.device)
         images = images.half() if self.half else images.float()
         images /= 255
 
