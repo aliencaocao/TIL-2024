@@ -175,10 +175,8 @@ class Yolov6DetectionModel:
             max_det=1000,
         )
 
-        dets = [
-            Inferer.rescale(image.shape[1:], det[:, :4], self.image_size).round()
-            for det, image in zip(dets, images)
-        ]
+        for det, image in zip(dets, images):
+            det[:, :4] = Inferer.rescale(image.shape[1:], det[:, :4], self.image_size).round()
 
         self._original_predictions = dets
 
@@ -209,8 +207,8 @@ class Yolov6DetectionModel:
                 category_name=self.category_mapping[str(cls)],
                 shift_amount=shift_amount,
                 full_shape=full_shape,
-            ) for *xyxy, conf, cls in single_img_pred]
-            for single_img_pred, shift_amount, full_shape 
+            ) for *xyxy, conf, cls in single_img_preds]
+            for single_img_preds, shift_amount, full_shape 
             in zip(self._original_predictions, shift_amount_list, full_shape_list)
         ]
 
