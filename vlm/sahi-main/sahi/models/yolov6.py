@@ -141,15 +141,16 @@ class Yolov6DetectionModel:
 
             empty_cuda_cache()
 
-    def perform_inference(self, images: List[np.ndarray], num_batch: int = 1):
+    def perform_inference(self, images: Union[np.ndarray, List[np.ndarray]], num_batch: int = 1):
         """
         This function should be implemented in a way that prediction should be
         performed using self.model and the prediction result should be set to self._original_predictions.
         Args:
-            image: List[np.ndarray]
-                A list of numpy arrays that contain the images to be predicted, in HWC format.
+            image: np.ndarray or List[np.ndarray]
+                A numpy array or list of numpy arrays that contains the image(s) to be predicted, in HWC format.
         """
-        assert len(images) > 0
+        if not isinstance(images, list):
+            images = [images]
 
         for i in range(len(images)):
             images[i] = letterbox(
