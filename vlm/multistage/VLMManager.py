@@ -204,8 +204,6 @@ class VLMManager:
                     agnostic_nms: bool = False
 
                     det = non_max_suppression(pred_results, nms_conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
-                    gn = torch.tensor(img_src.shape)[[1, 0, 1, 0]]  # normalization gain whwh
-                    img_ori = img_src.copy()
 
                     filter_conf_thres = 0.5
 
@@ -284,7 +282,7 @@ class VLMManager:
                 x1, y1, x2, y2 = yolo_box[box_idx]
                 # convert to ltwh
                 bboxes.append([x1, y1, x2 - x1, y2 - y1])
-            except:
+            except:  # TODO: yolov9 filtering
                 bboxes.append([300, 300, 50, 50])
 
         logging.info(f'Captions:\n{captions}\nBoxes:\n{bboxes}')
