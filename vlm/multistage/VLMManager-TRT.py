@@ -1,17 +1,20 @@
-# import os
-# os.environ['PYTORCH_NO_CUDA_MEMORY_CACHING'] = '1'
-
 import gc
 import io
 import logging
 import math
+import os
 import sys
+
+# os.environ['PYTORCH_NO_CUDA_MEMORY_CACHING'] = '1'
 
 sys.path.insert(0, ".")
 from yolov6.layers.common import DetectBackend
 from yolov6.data.data_augment import letterbox
 from yolov6.utils.nms import non_max_suppression
 from yolov6.core.inferer import Inferer
+
+from transformers import SiglipTokenizer, SiglipImageProcessor
+from torch2trt import TRTModule
 
 from typing import List, Optional
 import numpy as np
@@ -22,8 +25,6 @@ from realesrgan import RealESRGANer
 from realesrgan.archs.srvgg_arch import SRVGGNetCompact
 from sahi import AutoDetectionModel
 from sahi.predict import get_sliced_prediction
-from transformers import AutoImageProcessor, AutoModelForZeroShotImageClassification, AutoTokenizer, ZeroShotImageClassificationPipeline
-from transformers.image_utils import load_image
 from ultralytics import YOLO
 
 logging.basicConfig(
@@ -32,42 +33,6 @@ logging.basicConfig(
     handlers=[
         logging.StreamHandler()
     ])
-
-
-class CustomPipeline(ZeroShotImageClassificationPipeline):
-    def preprocess(self, image, candidate_labels=None, hypothesis_template="This is a photo of {}.", timeout=None):
-        image = load_image(image, timeout=timeout)
-        inputs = self.image_processor(images=[image], return_tensors=self.framework)
-        inputs["pixel_values"] = inputs["pixel_values"].type(self.torch_dtype)  # cast to whatever dtype model is in (previously always in fp32)
-        inputs["candidate_labels"] = candidate_labels
-        sequences = [hypothesis_template.format(x) for x in candidate_labels]
-        padding = "max_length" if self.model.config.model_type == "siglip" else True
-        text_inputs = self.tokenizer(sequences, return_tensors=self.framework, padding=padding)
-        inputs["text_inputs"] = [text_inputs]
-        return inputs
-
-    def postprocess(self, model_outputs):
-        candidate_labels = model_outputs.pop("candidate_labels")
-        logits = model_outputs["logits"][0]
-        if self.framework == "pt" and self.model.config.model_type == "siglip":
-            probs = torch.sigmoid(logits).squeeze(-1)
-            scores = probs.tolist()
-            if not isinstance(scores, list):
-                scores = [scores]
-        elif self.framework == "pt":
-            # probs = logits.softmax(dim=-1).squeeze(-1)
-            probs = logits.squeeze(-1)  # no softmax because only 1 target class at test time, softmax causes it to go 1.0 for all
-            scores = probs.tolist()
-            if not isinstance(scores, list):
-                scores = [scores]
-        else:
-            raise ValueError(f"Unsupported framework: {self.framework}")
-
-        result = [
-            {"score": score, "label": candidate_label}
-            for score, candidate_label in sorted(zip(scores, candidate_labels), key=lambda x: -x[0])
-        ]
-        return result
 
 
 def check_img_size(img_size, s=32, floor=0):
@@ -163,14 +128,20 @@ class VLMManager:
             self.upscaler_pad1.enhance(np.zeros((8, 10, 3), dtype=np.uint8), outscale=4)  # warmup
 
         logging.info(f'Loading CLIP model from {clip_path}')
-        self.clip_model = CustomPipeline(task="zero-shot-image-classification",
-                                         model=AutoModelForZeroShotImageClassification.from_pretrained(clip_path, torch_dtype=torch.float16),
-                                         tokenizer=AutoTokenizer.from_pretrained(clip_path),
-                                         image_processor=AutoImageProcessor.from_pretrained(clip_path),
-                                         batch_size=4, device='cuda')
+        self.clip_image_processor = SiglipImageProcessor.from_pretrained(clip_path)
+        self.clip_tokenizer = SiglipTokenizer.from_pretrained(clip_path)
+        self.clip_logit_scale_exp = torch.tensor([118.3125], device=self.device, dtype=torch.float16, requires_grad=False)
+        self.clip_logit_bias = torch.tensor([-12.6640625], device=self.device, dtype=torch.float16, requires_grad=False)
+        self.clip_vision_trt = TRTModule()
+        self.clip_vision_trt.load_state_dict(torch.load(os.path.join(clip_path, 'vision_trt.pth')))
+        self.clip_text_trt = TRTModule()
+        self.clip_text_trt.load_state_dict(torch.load(os.path.join(clip_path, 'text_trt.pth')))
+
         logging.info(f'Warming up CLIP')
         for i in range(3):
-            self.clip_model(images=Image.new('RGB', (50, 50)), candidate_labels=['hello'])  # warmup
+            self.clip_vision_trt(torch.ones(1, 3, 384, 384, device=self.device, dtype=torch.float16))
+            self.clip_text_trt(torch.ones(1, 64, device=self.device, dtype=torch.int64))
+
         logging.info('VLMManager initialized')
 
     def identify(self, img_bytes: list[bytes], captions: list[str]) -> list[list[int]]:
@@ -260,7 +231,7 @@ class VLMManager:
                     cropped = self.upscaler_pad10.enhance(cropped, outscale=4)[0]
                 else:
                     cropped = self.upscaler_pad1.enhance(cropped, outscale=4)[0]
-                cropped = Image.fromarray(cropped)
+                # cropped = Image.fromarray(cropped)  # no need convert back to PIL for image processor
                 im_boxes.append(cropped)
             cropped_boxes.append(im_boxes)
 
@@ -269,13 +240,23 @@ class VLMManager:
 
         # clip inference
         clip_results = []
-        with torch.no_grad():
-            for boxes, im_captions in zip(cropped_boxes, captions_list):
-                r = self.clip_model(boxes, candidate_labels=im_captions)
-                print(r)
-                # only 1 caption/img at test time so just use [0]
-                image_to_text_scores = {im_captions[0]: [box[0]['score'] for box in r]}  # {caption: [score1, score2, ...]}, scores in sequence of bbox
-                clip_results.append(image_to_text_scores)
+        for boxes, im_captions in zip(cropped_boxes, captions_list):
+            im_captions_templated = [f'This is a photo of {caption}.' for caption in im_captions]  # prompt template used in HF pipeline
+            vision_input = self.clip_image_processor(images=boxes, return_tensors='pt').to(self.device)
+            text_inputs = self.clip_tokenizer(im_captions_templated, return_tensors='pt', padding='max_length', truncation=True).to(self.device)  # processor wont work since it dont pad to max_length=64
+            vision_input = vision_input['pixel_values'].type(torch.float16)
+            image_feat = self.clip_vision_trt(vision_input)['pooler_output']
+            text_feat = self.clip_text_trt(text_inputs['input_ids'])['pooler_output']
+            image_feat /= image_feat.norm(p=2, dim=-1, keepdim=True)
+            text_feat /= text_feat.norm(p=2, dim=-1, keepdim=True)
+            scores = image_feat @ text_feat.T * self.clip_logit_scale_exp + self.clip_logit_bias
+            scores = scores.squeeze(-1).tolist()  # sigmoid not needed as it dont change the ranking
+            if not isinstance(scores, list): scores = [scores]
+            im_captions *= len(scores)  # repeat the captions to match the scores for zip() below
+            r = [{"score": score, "label": candidate_label} for score, candidate_label in zip(scores, im_captions)]  # cannot sort here else scramble the box idx
+            # only 1 caption at test time so just use [0]
+            image_to_text_scores = {im_captions[0]: [box['score'] for box in r]}  # {caption: [score1, score2, ...]}, score in seq of bbox
+            clip_results.append(image_to_text_scores)
 
         bboxes = []
         # combine the results
@@ -298,22 +279,22 @@ if __name__ == "__main__":
     import orjson
     import base64
 
-    vlm_manager = VLMManager(yolo_paths=['yolov6l6_epoch22_notpruned.pt'], clip_path='siglip-large-patch16-384-ft', upscaler_path='realesr-general-x4v3.pth', use_sahi=True)
+    vlm_manager = VLMManager(yolo_paths=['yolov9e_0.995_0.823_epoch65.engine'], clip_path='siglip/siglip-large-epoch5-augv2-upscale_0.892_cont_5ep_0.905', upscaler_path='realesr-general-x4v3.pth', use_sahi=True)
     all_answers = []
 
-    batch_size = 4
+    batch_size = 1  # tensorrt only can do bs1
     instances = []
     truths = []
     counter = 0
     max_samples = 12  # try on 12 samples only
-    with open("../../../advanced/vlm.jsonl", "r") as f:
+    with open("../../data/vlm.jsonl", "r") as f:
         for line in tqdm(f):
             if counter > max_samples:
                 break
             if line.strip() == "":
                 continue
             instance = orjson.loads(line.strip())
-            with open(f'../../../advanced/images/{instance["image"]}', "rb") as file:
+            with open(f'../../data/images/{instance["image"]}', "rb") as file:
                 image_bytes = file.read()
                 for annotation in instance["annotations"]:
                     instances.append(

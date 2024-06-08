@@ -152,7 +152,9 @@ TFDS_DATA_DIR=/kaggle/input/til-siglip-tfds BV_JAX_INIT=1 python3 -m big_vision.
 ### Evaluation
 
 #### YOLOv9c 0.99 0.769 on own test
-map@0.5 self calculated: 0.5095833333333334
+map@0.5 self calculated conf=0.1: 0.5095833333333334
+
+pycocotools on conf=0.1:
 ```
 Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.127
 Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.394
@@ -169,7 +171,9 @@ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.077
 ```
 
 #### YOLOv9e 0.995 0.801 on own test
-map@0.5 self calculated: 0.7375
+map@0.5 self calculated conf=0.1: 0.7375
+
+pycocotools on conf=0.1:
 ```
 Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.239
 Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.667
@@ -186,7 +190,11 @@ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.323
 ```
 
 #### YOLOv9e 0.995 0.823 epoch65 on own test
-map@0.5 self calculated: 0.7529166666666667
+map@0.5 self calculated conf=0.1: 0.7529166666666667
+
+map@0.5 self calculated conf=0.5: 0.6794763513513513
+
+pycocotools on conf=0.1:
 ```
 Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.249
 Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.679
@@ -203,6 +211,7 @@ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.367
 ```
 
 #### YOLOv9e 0.995 0.814 epoch89 augsv2 on own test
+pycocotools on conf=0.1:
 ```
 Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.197
 Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.574
@@ -217,42 +226,24 @@ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
 Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.296
 Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.264
 ```
+Bad run.
 
-#### YOLOv6l6 augsv3 on own test conf=0.1
-map@0.5 self calculated: 0.8668614357262103
-```
-Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.297
-Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.768
-Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.140
-Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
-Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.266
-Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.387
-Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.126
-Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.397
-Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.397
-Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
-Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.394
-Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.407
-```
+#### YOLOv6l6 augsv3 on own test
 
-#### YOLOv6l6 augsv3 on own test conf=0.5
-map@0.5 self calculated: 0.7626050420168067
-```
-Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.281
-Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.726
-Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.133
-Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
-Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.249
-Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.372
-Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.126
-Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.372
-Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.372
-Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = -1.000
-Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.366
-Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.391
-```
+| conf | IoU thresh | pycocotools mAP@0.5 | pycocotools mAP@0.5-0.95 | self calc mAP@0.5 over no. GT | self calc mAP@0.5 over no. preds |
+|------|------------|---------------------|--------------------------|-------------------------------|----------------------------------|
+| 0.1  | 0.5        | 0.806               | 0.319                    | 0.8606010016694491            | 0.47304427621013995              |
+| 0.25 | 0.1        | 0.765               | 0.305                    | 0.800251256281407             | 0.8145780051150895               |
+| 0.25 | 0.3        | 0.765               | 0.305                    | 0.8010887772194305            | 0.8095641134151502               |
+| 0.25 | 0.5        | 0.773               | 0.307                    | 0.804857621440536             | 0.7998335414065751               |
+| 0.25 | 0.7        | 0.772               | 0.309                    | 0.8115577889447236            | 0.7540856031128405               |
+| 0.5  | 0.5        | 0.713               | 0.283                    | 0.7377946127946128            | 0.909704203425013                |
 
-**Conclusion** Yolov6l6's TPs are of lower conf than v9e which means a lower conf thresh must be used, this increases FPs
+
+**Conclusion**: 
+Yolov6l6's TPs are of lower conf than v9e which means a lower conf thresh must be used, this increases FPs. Lower IOU is more suitable for small obj det.
+Overall, yolov6l6 outperforms all yolov9e. Self calculated mAP@0.5 over GT: v9e 0.6794763513513513 (conf=0.5, iou=0.1) vs v6l6 0.7377946127946128 (conf=0.5, iou=0.5). On cocotools map@0.5, v9e 0.679 vs v6l6 0.806 (conf=0.1, iou=0.5)
+Choosing conf=0.25 and iou=0.3 for finals as it strikes balance between Precision and Recall on self calc.
 
 #### YOLOv9c 0.99 0.769 conf=0.365 iou=0.1 + siglip-large-patch16-256
 test set:
@@ -719,9 +710,19 @@ WBF with epoch62 and 65 at 1600 0.2, 1:
 
 The epoch 62 model dragging it down. Dropping reso to 1536 makes it worse.
 
+#### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled-v2
+Same as above 0.884 but with training data upscaled 4x using real-esrgan x4v3 (pad=10 with image < 10 upscaled with pad=1)
+
+test set:
+
+no sahi conf=0.5:
+- Accuracy: 0.89
+- Speed Score: 0.6588264529629629
+
+Worse than epoch5v1 upscaled cont 5ep below. Might be overfitting due to reduction in variance in training data by upscaling all images.
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled-cont-5ep
-Continued from above 0.894 for 5 more epoch
+Continued from above 0.894 for 5 more epoch but with training data upscaled 4x using real-esrgan x4v3 (pad=10 with image < 10 upscaled with pad=1)
 
 No SAHI conf=0.1:
 - Accuracy: 0.889
