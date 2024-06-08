@@ -8,6 +8,7 @@ exllamav2
 nlp/src/models/*
 *.whl
 !vlm/multistage/sahi-0.11.18-py3-none-any.whl
+vlm/sahi-main/sahi/models/yolov6/
 vlm/multistage/siglip-large-patch16-384
 vlm/multistage/yolov8/runs/*
 vlm/multistage/runs/*

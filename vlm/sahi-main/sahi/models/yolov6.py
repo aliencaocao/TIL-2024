@@ -1,14 +1,15 @@
 # OBSS SAHI Tool
 # Code written by Fatih C Akyon, 2020.
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import math
-import requests
 import torch
 
-from yolov6.utils.events import LOGGER, load_yaml
+# This works locally because yolov6 folder is in repo but gitignored.
+# It also works in container because yolov6 folder is copied to /workspace
+# and VLMManager.py adds /workspace to PATH.
 from yolov6.layers.common import DetectBackend
 from yolov6.data.data_augment import letterbox
 from yolov6.utils.nms import non_max_suppression
