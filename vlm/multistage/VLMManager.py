@@ -114,6 +114,8 @@ class VLMManager:
                 model_path=yolo_path,
                 confidence_threshold=0.5,
                 device="cuda",
+                image_size=896,  # not used for TRT. TRT uses cfg below
+                standard_pred_image_size=1600,  # not used for TRT. TRT uses cfg below
                 cfg={
                     "task": 'detect',
                     "names": {'0': 'target'},
@@ -270,6 +272,7 @@ class VLMManager:
         with torch.no_grad():
             for boxes, im_captions in zip(cropped_boxes, captions_list):
                 r = self.clip_model(boxes, candidate_labels=im_captions)
+                print(r)
                 # only 1 caption/img at test time so just use [0]
                 image_to_text_scores = {im_captions[0]: [box[0]['score'] for box in r]}  # {caption: [score1, score2, ...]}, scores in sequence of bbox
                 clip_results.append(image_to_text_scores)
@@ -295,7 +298,7 @@ if __name__ == "__main__":
     import orjson
     import base64
 
-    vlm_manager = VLMManager(yolo_paths=['yolov6l6_epoch22_notpruned.pt'], clip_path='siglip-large-patch16-384-ft', upscaler_path='realesr-general-x4v3.pth', use_sahi=False)
+    vlm_manager = VLMManager(yolo_paths=['yolov6l6_epoch22_notpruned.pt'], clip_path='siglip-large-patch16-384-ft', upscaler_path='realesr-general-x4v3.pth', use_sahi=True)
     all_answers = []
 
     batch_size = 4

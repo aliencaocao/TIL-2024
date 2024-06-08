@@ -48,5 +48,7 @@ COPY siglip-large-patch16-384-ft siglip-large-patch16-384-ft
 
 COPY api_service.py api_service.py
 COPY VLMManager.py VLMManager.py
+# for TensorRT finals submission ONLY, does NOT work on T4!
+# COPY VLMManager-TRT.py VLMManager.py
 
 CMD uvicorn api_service:app --port 5004 --host 0.0.0.0

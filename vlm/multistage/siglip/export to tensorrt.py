@@ -14,8 +14,8 @@ y_trt = model_trt(dummy)['pooler_output']
 torch.save(model_trt.state_dict(), 'vision_trt.pth')
 print('Vision model exported. atol:', torch.max(torch.abs(y - y_trt)))
 
-dummy = torch.ones(1, 10, dtype=torch.long, device='cuda')
-model_trt = torch2trt(text_model, [dummy], fp16_mode=True, min_shapes=[(1, 8)], opt_shapes=[(1, 10)], max_shapes=[(1, 32)], use_onnx=True)
+dummy = torch.ones(1, 64, dtype=torch.long, device='cuda')
+model_trt = torch2trt(text_model, [dummy], fp16_mode=True, min_shapes=[(1, 64)], opt_shapes=[(1, 64)], max_shapes=[(1, 64)], use_onnx=True)
 y = text_model(dummy).pooler_output
 y_trt = model_trt(dummy)['pooler_output']
 torch.save(model_trt.state_dict(), 'text_trt.pth')
