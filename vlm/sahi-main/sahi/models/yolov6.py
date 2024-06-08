@@ -1,7 +1,7 @@
 # OBSS SAHI Tool
 # Code written by Fatih C Akyon, 2020.
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union, Iterable
 
 import numpy as np
 import math
@@ -48,7 +48,7 @@ class Yolov6DetectionModel:
         category_mapping: Optional[Dict] = None,
         category_remapping: Optional[Dict] = None,
         load_at_init: bool = True,
-        image_size: int = None,
+        image_size: Union[Iterable, int] = None,
     ):
         """
         Init object detection/instance segmentation model.
@@ -175,7 +175,7 @@ class Yolov6DetectionModel:
         )
 
         dets = [
-            Inferer.rescale(image.shape[2:], det[:, :4], self.image_size).round()
+            Inferer.rescale(image.shape[1:], det[:, :4], self.image_size).round()
             for det, image in zip(dets, images)
         ]
 
