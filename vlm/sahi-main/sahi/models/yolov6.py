@@ -165,7 +165,7 @@ class Yolov6DetectionModel:
         )))
         
         # SETTINGS HERE
-        det = non_max_suppression(
+        dets = non_max_suppression(
             prediction=pred_results,
             conf_thres=self.confidence_threshold,
             iou_thres=self.iou_threshold,
@@ -174,12 +174,12 @@ class Yolov6DetectionModel:
             max_det=1000,
         )
 
-        det[:, :, :4] = [
+        dets = [
             Inferer.rescale(image.shape[2:], det[:, :4], self.image_size).round()
-            for image in images
+            for det, image in zip(dets, images)
         ]
 
-        self._original_predictions = det
+        self._original_predictions = dets
 
     def _create_object_prediction_list_from_original_predictions(
         self,
