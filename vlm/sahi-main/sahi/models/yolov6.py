@@ -17,6 +17,7 @@ from yolov6.utils.nms import non_max_suppression
 from yolov6.core.inferer import Inferer
 
 from sahi.prediction import ObjectPrediction
+from sahi.utils.compatibility import fix_full_shape_list, fix_shift_amount_list
 from sahi.utils.import_utils import is_available
 from sahi.utils.torch import select_device as select_torch_device
 
@@ -197,6 +198,9 @@ class Yolov6DetectionModel:
                 Size of the full image after shifting, should be in the form of
                 List[[height, width],[height, width],...]
         """
+
+        shift_amount_list = fix_shift_amount_list(shift_amount_list)
+        full_shape_list = fix_full_shape_list(full_shape_list)
 
         self._object_prediction_list_per_image = [
             [ObjectPrediction(

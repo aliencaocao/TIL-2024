@@ -158,8 +158,7 @@ class Yolov8DetectionModel(DetectionModel):
         original_predictions = self._original_predictions
 
         # compatilibty for sahi v0.8.15
-        if not isinstance(shift_amount_list[0], list):
-            shift_amount_list = fix_shift_amount_list(shift_amount_list)
+        shift_amount_list = fix_shift_amount_list(shift_amount_list)
         full_shape_list = fix_full_shape_list(full_shape_list)
         # handle all predictions
         object_prediction_list_per_image = []
