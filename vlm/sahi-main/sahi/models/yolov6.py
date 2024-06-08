@@ -160,9 +160,9 @@ class Yolov6DetectionModel:
         images = images.half() if self.half else images.float()
         images /= 255
 
-        pred_results = itertools.chain.from_iterable(
+        pred_results = torch.tensor(list(itertools.chain.from_iterable(
             self.model(batch) for batch in torch.split(images, num_batch)
-        )
+        )))
         
         # SETTINGS HERE
         det = non_max_suppression(
