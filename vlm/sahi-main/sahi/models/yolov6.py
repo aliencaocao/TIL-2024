@@ -200,11 +200,11 @@ class Yolov6DetectionModel:
 
         self._object_prediction_list_per_image = [
             [ObjectPrediction(
-                bbox=xyxy,
-                category_id=cls,
-                score=conf,
+                bbox=[x.item() for x in xyxy],
+                category_id=int(cls),
+                score=float(conf),
                 segmentation=None,
-                category_name=self.category_mapping[str(cls)],
+                category_name=self.category_mapping[str(int(cls))],
                 shift_amount=shift_amount,
                 full_shape=full_shape,
             ) for *xyxy, conf, cls in single_img_preds]
