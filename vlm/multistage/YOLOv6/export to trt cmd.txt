@@ -1,0 +1,3 @@
+python ./deploy/ONNX/export_onnx.py --weights 29_ckpt_yolov6l6_blind.pt --img 896 1536 --batch 1 --half --end2end --simplify --inplace --trt-version 10 --topk-all 10 --iou-thres 0.3 --conf-thres 0.01 --device 0
+
+trtexec --onnx=29_ckpt_yolov6l6_blind.onnx --saveEngine=29_ckpt_yolov6l6_blind.engine --memPoolSize=workspace:8000 --fp16
