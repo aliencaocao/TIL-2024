@@ -116,7 +116,7 @@ class VLMManager:
             if isyolov6:
                 if self.use_sahi:
                     curr_model = Yolov6DetectionModel(
-                        model_path="29_ckpt_yolov6l6_blind.pt",
+                        model_path=yolo_path,
                         device="cuda",
                         category_mapping={"0": "target"},
                         confidence_threshold=0.5,
@@ -236,7 +236,7 @@ class VLMManager:
                     det = non_max_suppression(pred_results, nms_conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
 
                     #CHANGE THIS LINE FOR CONFIDENCE THRESHOLD
-                    filter_conf_thres = 0.25
+                    filter_conf_thres = 0.5
                     curr_img_detections = []
                     if len(det):
                         det[:, :4] = Inferer.rescale(img.shape[2:], det[:, :4], img_src.shape).round()
@@ -269,7 +269,7 @@ class VLMManager:
                 boxes_list.append([r[0] for r in yolo_result[i]])
                 scores_list.append([r[1] for r in yolo_result[i]])
                 labels_list.append([0] * len(yolo_result[i]))
-            boxes, scores, labels = weighted_boxes_fusion(boxes_list, scores_list, labels_list, weights=self.yolo_wbf_weights, iou_thr=0.5, skip_box_thr=0.0001)
+            boxes, scores, labels = weighted_boxes_fusion(boxes_list, scores_list, labels_list, weights=self.yolo_wbf_weights, iou_thr=0.7, skip_box_thr=0.0001)
             boxes = boxes.tolist()
             # normalize
             w, h = img.size
@@ -325,7 +325,7 @@ if __name__ == "__main__":
     import orjson
     import base64
 
-    vlm_manager = VLMManager(yolo_paths=['29_ckpt_yolov6l6_blind.pt'], clip_path='siglip-large-patch16-384-ft', upscaler_path='realesr-general-x4v3.pth', use_sahi=False)
+    vlm_manager = VLMManager(yolo_paths=['29_ckpt_yolov6l6_blind.pt', 'yolov6l6_epoch22_notpruned.pt'], clip_path='siglip-large-patch16-384-ft', upscaler_path='realesr-general-x4v3.pth', use_sahi=False)
     all_answers = []
 
     batch_size = 4
