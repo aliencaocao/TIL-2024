@@ -7,6 +7,7 @@ import numpy as np
 import math
 import torch
 import itertools
+from tqdm import tqdm
 
 # This works locally because yolov6 folder is in repo but gitignored.
 # It also works in container because yolov6 folder is copied to /workspace
@@ -44,8 +45,9 @@ class Yolov6DetectionModel:
         model_path: Optional[str] = None,
         model: Optional[Any] = None,
         device: Optional[str] = None,
-        confidence_threshold: float = 0.5,
-        iou_threshold: float = 0.5,
+        nms_confidence_threshold: float = 0.01,
+        iou_threshold: float = 0.3,
+        filter_confidence_threshold: float = 0.25,
         category_mapping: Optional[Dict] = None,
         category_remapping: Optional[Dict] = None,
         load_at_init: bool = True,
@@ -72,8 +74,9 @@ class Yolov6DetectionModel:
         self.model_path = model_path
         self.model = None
         self.device = device
-        self.confidence_threshold = confidence_threshold
+        self.nms_confidence_threshold = nms_confidence_threshold
         self.iou_threshold = iou_threshold
+        self.filter_confidence_threshold = filter_confidence_threshold
         self.category_mapping = category_mapping
         self.category_remapping = category_remapping
         self.image_size = image_size
@@ -166,18 +169,18 @@ class Yolov6DetectionModel:
             self.model(batch) for batch in torch.split(images, num_batch)
         )))
         
-        # SETTINGS HERE
         dets = non_max_suppression(
             prediction=pred_results,
-            conf_thres=self.confidence_threshold,
+            conf_thres=self.nms_confidence_threshold,
             iou_thres=self.iou_threshold,
             classes=None,
             agnostic=False,
             max_det=1000,
         )
 
-        for det, image in zip(dets, images):
-            det[:, :4] = Inferer.rescale(image.shape[1:], det[:, :4], self.image_size).round()
+        for i in range(len(dets)):
+            dets[i][:, :4] = Inferer.rescale(images[i].shape[1:], dets[i][:, :4], self.image_size).round()
+            dets[i] = dets[i][dets[i][:, 4] >= self.filter_confidence_threshold]
 
         self._original_predictions = dets
 

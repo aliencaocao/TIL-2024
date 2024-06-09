@@ -122,8 +122,10 @@ class VLMManager:
                         model_path=yolo_path,
                         device="cuda",
                         category_mapping={"0": "target"},
-                        confidence_threshold=0.5,
-                        iou_threshold=0.5,
+                        # SETTINGS HERE
+                        nms_confidence_threshold=0.01,
+                        iou_threshold=0.3,
+                        filter_confidence_threshold=0.25,
                         image_size=[870, 1520],
                     )
                 else:
