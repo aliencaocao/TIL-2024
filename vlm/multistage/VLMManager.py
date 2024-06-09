@@ -159,14 +159,14 @@ class VLMManager:
         for i in range(3):
             for is_yolov6, yolo_model in zip(self.isyolov6, self.yolo_models):
                 if self.use_sahi:
-                    get_sliced_prediction(
+                    get_sliced_prediction(  # noqa
                         Image.new('RGB', (1520, 870)),
                         yolo_model,
                         perform_standard_pred=True,
                         postprocess_class_agnostic=True,
                         batch=6,
                         verbose=0,
-                    ).object_prediction_list  # noqa
+                    ).object_prediction_list
                 elif is_yolov6:
                     warmup_img_size = check_img_size([870, 1520], s=yolo_model.stride)
                     yolo_model.model.half()
