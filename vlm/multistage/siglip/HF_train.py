@@ -20,10 +20,10 @@ from modeling_siglip import SiglipModel
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
-pretrained_model_path = "google/siglip-so400m-patch14-384"
+pretrained_model_path = "google/siglip-large-patch16-384"
 
 model = SiglipModel.from_pretrained(pretrained_model_path)
-processor = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384")  # always use pretrained
+processor = AutoProcessor.from_pretrained("google/siglip-large-patch16-384")  # always use pretrained
 # tokenizer = AutoTokenizer.from_pretrained(pretrained_model_path)
 # image_processor = AutoImageProcessor.from_pretrained(pretrained_model_path)
 config = model.config
@@ -135,8 +135,8 @@ def compute_metrics(pred: EvalPrediction):
 
 
 effective_bs = 960
-gpu_num = 2
-per_dev_bs = 4  # 4 for 2x24GB GPUs, can increase when got more GPUs due to FDSP
+gpu_num = 5
+per_dev_bs = 12  # can increase when got more GPUs due to FDSP
 grad_accum = int(960 / gpu_num / per_dev_bs)
 
 # initialize Trainer
@@ -151,7 +151,7 @@ training_args = TrainingArguments(
     gradient_accumulation_steps=grad_accum,
     adam_beta1=0.9,
     adam_beta2=0.99,  # decrease from 0.999
-    num_train_epochs=30,
+    num_train_epochs=10,
     lr_scheduler_type="cosine",
     logging_strategy="steps",
     logging_steps=1,
@@ -170,7 +170,7 @@ training_args = TrainingArguments(
     optim='adamw_torch_fused',
     # resume_from_checkpoint=pretrained_model_path,
     report_to='wandb',
-    run_name="weak-aug-30epoch",
+    run_name="siglip-large-augv2-10ep",
     gradient_checkpointing=False,
     torch_compile=sys.platform == 'linux',
 )
