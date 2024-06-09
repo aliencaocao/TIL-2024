@@ -6,6 +6,7 @@ import io
 import logging
 import math
 import sys
+import os
 
 sys.path.insert(0, "/workspace")
 from yolov6.layers.common import DetectBackend
@@ -246,14 +247,14 @@ class VLMManager:
                     nms_conf_thres: float = 0.01
 
                     # CHANGE THIS LINE FOR IOU THRESHOLD
-                    iou_thres: float = 0.5
+                    iou_thres: float = 0.3
                     max_det: int = 10
                     agnostic_nms: bool = False
 
                     det = non_max_suppression(pred_results, nms_conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
 
                     # CHANGE THIS LINE FOR CONFIDENCE THRESHOLD
-                    filter_conf_thres = 0.5
+                    filter_conf_thres = 0.25
                     curr_img_detections = []
                     if len(det):
                         det[:, :4] = Inferer.rescale(img.shape[2:], det[:, :4], img_src.shape).round()
@@ -303,8 +304,10 @@ class VLMManager:
                 cropped = np.asarray(cropped)
                 if not any(s <= 10 for s in cropped.shape[:2]):
                     cropped = self.upscaler_pad10.enhance(cropped, outscale=4)[0]
-                else:
+                elif not any(s <= 1 for s in cropped.shape[:2]):
                     cropped = self.upscaler_pad1.enhance(cropped, outscale=4)[0]
+                else: # upscaler transposes CHW to HWC, so if upscaler not called then transpose manually
+                    cropped = cropped.astype(np.uint8)
                 cropped = Image.fromarray(cropped)
                 im_boxes.append(cropped)
             cropped_boxes.append(im_boxes)
@@ -333,6 +336,7 @@ class VLMManager:
                     # only 1 caption at test time so just use [0]
                     image_to_text_scores = {im_captions[0]: [box['score'] for box in r]}  # {caption: [score1, score2, ...]}, score in seq of bbox
                 else:
+                    boxes = [img.resize((dim+1 for dim in img.size)) for img in boxes]
                     r = self.clip_model(boxes, candidate_labels=im_captions)
                     # only 1 caption/img at test time so just use [0]
                     image_to_text_scores = {im_captions[0]: [box[0]['score'] for box in r]}  # {caption: [score1, score2, ...]}, scores in sequence of bbox
