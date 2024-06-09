@@ -23,7 +23,8 @@ from realesrgan.archs.srvgg_arch import SRVGGNetCompact
 from sahi import AutoDetectionModel
 from sahi.models.yolov6 import Yolov6DetectionModel
 from sahi.predict import get_sliced_prediction
-from transformers import AutoImageProcessor, AutoModelForZeroShotImageClassification, AutoTokenizer, ZeroShotImageClassificationPipeline
+from transformers import AutoImageProcessor, AutoModelForZeroShotImageClassification, AutoTokenizer, ZeroShotImageClassificationPipeline, SiglipTokenizer, SiglipImageProcessor
+from torch2trt import TRTModule
 from transformers.image_utils import load_image
 from ultralytics import YOLO
 
@@ -103,13 +104,14 @@ def process_image(img, img_size, stride, half):
 
 
 class VLMManager:
-    def __init__(self, yolo_paths: list[str], clip_path: str, upscaler_path: str, use_sahi: bool = True):
-        logging.info(f'Loading {len(yolo_paths)} YOLO models from {yolo_paths}. Using SAHI: {use_sahi}')
+    def __init__(self, yolo_paths: list[str], clip_path: str, upscaler_path: str, use_sahi: bool = True, siglip_trt: bool = False):
+        logging.info(f'Loading {len(yolo_paths)} YOLO models from {yolo_paths}. Using SAHI: {use_sahi}. Using SigLIP TensorRT: {siglip_trt}')
         self.device = torch.device('cuda:0')
 
         self.use_sahi = use_sahi
-        
-        self.isyolov6 = [True if 'yolov6' in yolo_path else False for yolo_path in yolo_paths]
+        self.siglip_trt = siglip_trt
+
+        self.isyolov6 = ['yolov6' in yolo_path for yolo_path in yolo_paths]
 
         self.yolo_models = []
         for yolo_path, isyolov6 in zip(yolo_paths, self.isyolov6):
@@ -125,14 +127,14 @@ class VLMManager:
                     )
                 else:
                     curr_model = DetectBackend(yolo_path, device=self.device)
-            else: # YOLOv8
+            else:  # YOLOv8/Ultralytics
                 if self.use_sahi:
                     curr_model = AutoDetectionModel.from_pretrained(
                         model_type="yolov8",
                         model_path=yolo_path,
                         confidence_threshold=0.5,
-                        image_size = 896,
-                        standard_pred_image_size = 1600,
+                        image_size=896,
+                        standard_pred_image_size=1600,
                         device="cuda",
                         cfg={
                             "task": 'detect',
@@ -149,7 +151,7 @@ class VLMManager:
 
         self.yolo_wbf_weights = [1] * len(self.yolo_models)
         assert len(self.yolo_models) == len(self.yolo_wbf_weights)
-        self.isyolov6 = [True if 'yolov6' in yolo_path else False for yolo_path in yolo_paths]
+
         logging.info(f'Warming up YOLO')
         for i in range(3):
             for is_yolov6, yolo_model in zip(self.isyolov6, self.yolo_models):
@@ -189,14 +191,29 @@ class VLMManager:
             self.upscaler_pad1.enhance(np.zeros((8, 10, 3), dtype=np.uint8), outscale=4)  # warmup
 
         logging.info(f'Loading CLIP model from {clip_path}')
-        self.clip_model = CustomPipeline(task="zero-shot-image-classification",
-                                         model=AutoModelForZeroShotImageClassification.from_pretrained(clip_path, torch_dtype=torch.float16),
-                                         tokenizer=AutoTokenizer.from_pretrained(clip_path),
-                                         image_processor=AutoImageProcessor.from_pretrained(clip_path),
-                                         batch_size=4, device='cuda')
-        logging.info(f'Warming up CLIP')
-        for i in range(3):
-            self.clip_model(images=Image.new('RGB', (50, 50)), candidate_labels=['hello'])  # warmup
+        if self.siglip_trt:
+            self.clip_image_processor = SiglipImageProcessor.from_pretrained(clip_path)
+            self.clip_tokenizer = SiglipTokenizer.from_pretrained(clip_path)
+            self.clip_logit_scale_exp = torch.tensor([118.3125], device=self.device, dtype=torch.float16, requires_grad=False)
+            self.clip_logit_bias = torch.tensor([-12.6640625], device=self.device, dtype=torch.float16, requires_grad=False)
+            self.clip_vision_trt = TRTModule()
+            self.clip_vision_trt.load_state_dict(torch.load(os.path.join(clip_path, 'vision_trt.pth')))
+            self.clip_text_trt = TRTModule()
+            self.clip_text_trt.load_state_dict(torch.load(os.path.join(clip_path, 'text_trt.pth')))
+
+            logging.info(f'Warming up CLIP')
+            for i in range(3):
+                self.clip_vision_trt(torch.ones(4, 3, 384, 384, device=self.device, dtype=torch.float16))
+                self.clip_text_trt(torch.ones(1, 64, device=self.device, dtype=torch.int64))
+        else:
+            self.clip_model = CustomPipeline(task="zero-shot-image-classification",
+                                             model=AutoModelForZeroShotImageClassification.from_pretrained(clip_path, torch_dtype=torch.float16),
+                                             tokenizer=AutoTokenizer.from_pretrained(clip_path),
+                                             image_processor=AutoImageProcessor.from_pretrained(clip_path),
+                                             batch_size=4, device='cuda')
+            logging.info(f'Warming up CLIP')
+            for i in range(3):
+                self.clip_model(images=Image.new('RGB', (50, 50)), candidate_labels=['hello'])  # warmup
         logging.info('VLMManager initialized')
 
     def identify(self, img_bytes: list[bytes], captions: list[str]) -> list[list[int]]:
@@ -227,15 +244,15 @@ class VLMManager:
 
                     classes: Optional[List[int]] = None  # the classes to keep
                     nms_conf_thres: float = 0.01
-                    
-                    #CHANGE THIS LINE FOR IOU THRESHOLD
+
+                    # CHANGE THIS LINE FOR IOU THRESHOLD
                     iou_thres: float = 0.5
                     max_det: int = 10
                     agnostic_nms: bool = False
 
                     det = non_max_suppression(pred_results, nms_conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
 
-                    #CHANGE THIS LINE FOR CONFIDENCE THRESHOLD
+                    # CHANGE THIS LINE FOR CONFIDENCE THRESHOLD
                     filter_conf_thres = 0.5
                     curr_img_detections = []
                     if len(det):
@@ -269,7 +286,7 @@ class VLMManager:
                 boxes_list.append([r[0] for r in yolo_result[i]])
                 scores_list.append([r[1] for r in yolo_result[i]])
                 labels_list.append([0] * len(yolo_result[i]))
-            boxes, scores, labels = weighted_boxes_fusion(boxes_list, scores_list, labels_list, weights=self.yolo_wbf_weights, iou_thr=0.7, skip_box_thr=0.0001)
+            boxes, scores, labels = weighted_boxes_fusion(boxes_list, scores_list, labels_list, weights=self.yolo_wbf_weights, iou_thr=0.5, skip_box_thr=0.0001)
             boxes = boxes.tolist()
             # normalize
             w, h = img.size
@@ -299,9 +316,26 @@ class VLMManager:
         clip_results = []
         with torch.no_grad():
             for boxes, im_captions in zip(cropped_boxes, captions_list):
-                r = self.clip_model(boxes, candidate_labels=im_captions)
-                # only 1 caption/img at test time so just use [0]
-                image_to_text_scores = {im_captions[0]: [box[0]['score'] for box in r]}  # {caption: [score1, score2, ...]}, scores in sequence of bbox
+                if self.siglip_trt:
+                    im_captions_templated = [f'This is a photo of {caption}.' for caption in im_captions]  # prompt template used in HF pipeline
+                    vision_input = self.clip_image_processor(images=boxes, return_tensors='pt').to(self.device)
+                    text_inputs = self.clip_tokenizer(im_captions_templated, return_tensors='pt', padding='max_length', truncation=True).to(self.device)  # processor wont work since it dont pad to max_length=64
+                    vision_input = vision_input['pixel_values'].type(torch.float16)
+                    image_feat = self.clip_vision_trt(vision_input)['pooler_output']
+                    text_feat = self.clip_text_trt(text_inputs['input_ids'])['pooler_output']
+                    image_feat /= image_feat.norm(p=2, dim=-1, keepdim=True)
+                    text_feat /= text_feat.norm(p=2, dim=-1, keepdim=True)
+                    scores = image_feat @ text_feat.T * self.clip_logit_scale_exp + self.clip_logit_bias
+                    scores = scores.squeeze(-1).tolist()  # sigmoid not needed as it dont change the ranking
+                    if not isinstance(scores, list): scores = [scores]
+                    im_captions *= len(scores)  # repeat the captions to match the scores for zip() below
+                    r = [{"score": score, "label": candidate_label} for score, candidate_label in zip(scores, im_captions)]  # cannot sort here else scramble the box idx
+                    # only 1 caption at test time so just use [0]
+                    image_to_text_scores = {im_captions[0]: [box['score'] for box in r]}  # {caption: [score1, score2, ...]}, score in seq of bbox
+                else:
+                    r = self.clip_model(boxes, candidate_labels=im_captions)
+                    # only 1 caption/img at test time so just use [0]
+                    image_to_text_scores = {im_captions[0]: [box[0]['score'] for box in r]}  # {caption: [score1, score2, ...]}, scores in sequence of bbox
                 clip_results.append(image_to_text_scores)
 
         bboxes = []
@@ -325,7 +359,7 @@ if __name__ == "__main__":
     import orjson
     import base64
 
-    vlm_manager = VLMManager(yolo_paths=['29_ckpt_yolov6l6_blind.pt', 'yolov6l6_epoch22_notpruned.pt'], clip_path='siglip-large-patch16-384-ft', upscaler_path='realesr-general-x4v3.pth', use_sahi=False)
+    vlm_manager = VLMManager(yolo_paths=['29_ckpt_yolov6l6_blind.pt'], clip_path='siglip-large-patch16-384-ft', upscaler_path='realesr-general-x4v3.pth', use_sahi=False)
     all_answers = []
 
     batch_size = 4
