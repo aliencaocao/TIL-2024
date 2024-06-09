@@ -217,7 +217,7 @@ class VLMManager:
 
             logging.info(f'Warming up CLIP')
             for i in range(3):
-                self.clip_vision_trt(torch.ones(4, 3, 384, 384, device=self.device, dtype=torch.float16))
+                self.clip_vision_trt(torch.ones(10, 3, 384, 384, device=self.device, dtype=torch.float16))
                 self.clip_text_trt(torch.ones(1, 64, device=self.device, dtype=torch.int64))
         else:
             self.clip_model = CustomPipeline(task="zero-shot-image-classification",
