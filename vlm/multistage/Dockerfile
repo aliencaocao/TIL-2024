@@ -23,6 +23,7 @@ WORKDIR /workspace
 
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt && rm requirements.txt
+RUN pip install git+https://github.com/aliencaocao/torch2trt.git@patch-1
 
 RUN git clone https://github.com/meituan/YOLOv6.git
 RUN pip install -r YOLOv6/requirements.txt
