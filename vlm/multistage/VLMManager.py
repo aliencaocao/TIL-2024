@@ -179,11 +179,11 @@ class VLMManager:
                 elif is_yolov6:
                     if isyolov6_trt:
                         warmup_img_size = check_img_size([870, 1520], s=32)
-                        yolo_model(torch.zeros(1, 3, *warmup_img_size, dtype=torch.float16, device=self.device))[0]  # noqa, warmup
+                        yolo_model(torch.zeros((1, 3, *warmup_img_size), dtype=torch.float16, device=self.device))[0]  # noqa, warmup
                     else:
                         warmup_img_size = check_img_size([870, 1520], s=yolo_model.stride)
                         yolo_model.model.half()
-                        yolo_model(torch.zeros(1, 3, *warmup_img_size, dtype=next(yolo_model.model.parameters()), device=self.device))  # warmup
+                        yolo_model(torch.zeros((1, 3, *warmup_img_size), dtype=next(yolo_model.model.parameters()), device=self.device))  # warmup
                 else:
                     yolo_model.predict(Image.new('RGB', (1520, 870)), imgsz=1600, conf=0.5, iou=0.1, max_det=10, verbose=False, augment=True)  # warmup
 
