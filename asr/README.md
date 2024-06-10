@@ -12,10 +12,10 @@ Note that the above example is in `mp4` format as GitHub does not support embedd
 
 Training was conducted with the following audiomentations augs:
 
-HighShelfFilter(max_gain_db=6.0, p=0.3),
-LowShelfFilter(max_gain_db=6.0, p=0.3),
-BandStopFilter(p=0.3),
-TimeStretch(min_rate=0.9, max_rate=1.1, p=0.3)
+HighShelfFilter(max_gain_db=6.0, p=0.3), \
+LowShelfFilter(max_gain_db=6.0, p=0.3), \
+BandStopFilter(p=0.3), \
+TimeStretch(min_rate=0.9, max_rate=1.1, p=0.3) 
 
 
 ## Output

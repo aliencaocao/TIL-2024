@@ -2,8 +2,8 @@
 
 ## Model Info:
 
-Trained on     : 'openai/whisper-medium'
-Epochs trained : 5
+Trained on     : 'openai/whisper-medium' \
+Epochs trained : 5 \
 Dataset        : DSTA TIL Dataset
 
 Google Drive name:
