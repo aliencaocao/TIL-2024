@@ -2,12 +2,12 @@
 
 ## Model Info:
 
-Trained on   : 'openai/whisper-small.en'
-Steps trained: 2000
-Dataset      : DSTA TIL Dataset
+Trained on     : 'openai/whisper-medium'
+Epochs trained : 5
+Dataset        : DSTA TIL Dataset
 
 Google Drive name:
-whisper-checkpoints/1_checkpoint-2000-wer-0.034826/
+WhisperSmallWeights/medium_Epoch5_wer0.030572_0.99569
 
 ## Input
 

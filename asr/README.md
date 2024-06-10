@@ -8,6 +8,16 @@ https://github.com/TIL-24/til-24-base/assets/162278270/5e42363d-9f01-4626-8d70-c
 
 Note that the above example is in `mp4` format as GitHub does not support embedding `.wav` files in README files. However, audio files provided on GCP will be `.wav` files.
 
+## Augmentations
+
+Training was conducted with the following audiomentations augs:
+
+HighShelfFilter(max_gain_db=6.0, p=0.3),
+LowShelfFilter(max_gain_db=6.0, p=0.3),
+BandStopFilter(p=0.3),
+TimeStretch(min_rate=0.9, max_rate=1.1, p=0.3)
+
+
 ## Output
 
 Transcription of audio file. Example: `"Heading is one five zero, target is green commercial aircraft, tool to deploy is electromagnetic pulse."`
