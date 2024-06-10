@@ -113,13 +113,15 @@ class VLMManager:
         self.use_sahi = use_sahi
         self.siglip_trt = siglip_trt
 
+        assert len(self.use_sahi) == len(yolo_paths)
+
         self.isyolov6 = ['yolov6' in yolo_path for yolo_path in yolo_paths]
         self.isyolov6_trt = [isyolov6 and yolo_path.endswith('.pth') for isyolov6, yolo_path in zip(self.isyolov6, yolo_paths)]
 
         self.yolo_models = []
-        for yolo_path, isyolov6, isyolov6_trt in zip(yolo_paths, self.isyolov6, self.isyolov6_trt):
+        for yolo_path, use_sahi, isyolov6, isyolov6_trt in zip(yolo_paths, self.use_sahi, self.isyolov6, self.isyolov6_trt):
             if isyolov6:
-                if self.use_sahi:
+                if use_sahi:
                     curr_model = Yolov6DetectionModel(
                         model_path=yolo_path,
                         device="cuda",
@@ -138,7 +140,7 @@ class VLMManager:
                     else:
                         curr_model = DetectBackend(yolo_path, device=self.device)
             else:  # YOLOv8/Ultralytics
-                if self.use_sahi:
+                if use_sahi:
                     curr_model = AutoDetectionModel.from_pretrained(
                         model_type="yolov8",
                         model_path=yolo_path,
@@ -164,8 +166,8 @@ class VLMManager:
 
         logging.info(f'Warming up YOLO')
         for i in range(3):
-            for is_yolov6, yolo_model, isyolov6_trt in zip(self.isyolov6, self.yolo_models, self.isyolov6_trt):
-                if self.use_sahi:
+            for use_sahi, is_yolov6, yolo_model, isyolov6_trt in zip(self.use_sahi, self.isyolov6, self.yolo_models, self.isyolov6_trt):
+                if use_sahi:
                     get_sliced_prediction(  # noqa
                         Image.new('RGB', (1520, 870)),
                         yolo_model,
@@ -239,8 +241,8 @@ class VLMManager:
         images = [Image.open(io.BytesIO(b)) for b in img_bytes]
         yolo_results = []
         # YOLO object det with WBF
-        for is_yolov6, yolo_model, isyolov6_trt in zip(self.isyolov6, self.yolo_models, self.isyolov6_trt):
-            if self.use_sahi:
+        for use_sahi, is_yolov6, yolo_model, isyolov6_trt in zip(self.use_sahi, self.isyolov6, self.yolo_models, self.isyolov6_trt):
+            if use_sahi:
                 yolo_result = []
                 for image in images:
                     per_img_result = get_sliced_prediction(image, yolo_model, perform_standard_pred=True, postprocess_class_agnostic=True, batch=6, verbose=0).object_prediction_list
