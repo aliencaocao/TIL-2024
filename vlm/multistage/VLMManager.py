@@ -272,6 +272,7 @@ class VLMManager:
             for tta_aug in tta_augs:
                 images_augmented = tta_aug(images).permute((0, 2, 3, 1)).numpy() # NCHW to NHWC
                 img_height, img_width = images_augmented.shape[1:3]
+                whwh = torch.tensor([img_width, img_height, img_width, img_height])
 
                 if use_sahi:
                     yolo_result = []
@@ -304,16 +305,15 @@ class VLMManager:
                         if len(det):
                             det[:, :4] = Inferer.rescale(img.shape[2:], det[:, :4], img_src.shape).round()
 
-                            norm_tensor = torch.tensor([img_width, img_height, img_width, img_height])
                             curr_img_detections = [
-                                [[x.item() for x in torch.tensor(xyxy) / norm_tensor], conf.item()]
+                                [[x.item() for x in torch.tensor(xyxy) / whwh], conf.item()]
                                 for *xyxy, conf, cls in reversed(det)
                                 if conf.item() >= filter_conf_thres
                             ]
                             if not curr_img_detections:
                                 # nothing passes filter_conf_thres so just use the highest conf pred
                                 *xyxy, conf, cls = det[-1]
-                                curr_img_detections = [[[x.item() for x in torch.tensor(xyxy) / norm_tensor], conf.item()]]
+                                curr_img_detections = [[[x.item() for x in torch.tensor(xyxy) / whwh], conf.item()]]
 
                         yolo_result.append(curr_img_detections)
                 else:
@@ -321,7 +321,6 @@ class VLMManager:
                     yolo_result = [(r.boxes.xyxyn.tolist(), r.boxes.conf.tolist()) for r in yolo_result]  # WBF need normalized xyxy
                     yolo_result = [tuple(zip(*r)) for r in yolo_result]  # list of tuple[box, conf] in each image
                 
-                whwh = torch.tensor([img_width, img_height, img_width, img_height])
                 for i, curr_img_detections in enumerate(yolo_result):
                     augmented_bboxes, confs = zip(*curr_img_detections)
                     # FIXME: this only works because all above transforms are self-inverse
