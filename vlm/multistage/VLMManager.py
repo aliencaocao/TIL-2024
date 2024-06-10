@@ -299,7 +299,7 @@ class VLMManager:
                         det = non_max_suppression(pred_results, nms_conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
 
                         # CHANGE THIS LINE FOR CONFIDENCE THRESHOLD
-                        filter_conf_thres = 0.25
+                        filter_conf_thres = 0.5
                         curr_img_detections = []
                         if len(det):
                             det[:, :4] = Inferer.rescale(img.shape[2:], det[:, :4], img_src.shape).round()
