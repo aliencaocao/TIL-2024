@@ -15,7 +15,7 @@ class ASRManager:
         self.model = WhisperModel(MODEL_PATH, device = "cuda", compute_type="float16", local_files_only = True)
         w, _ = librosa.load('tester.wav',sr=self.frequency)
         for i in range(3):
-            t = self.batch_transcribe_vad([w,w,w])
+            t = self.batch_transcribe_vad([w])
         
         
     def clean(annotation):
