@@ -189,7 +189,10 @@ WBF of 0.905+0.908 = 0.91
 New trained from start with 10 epochs, same as epoch5v2 below (data is fully upscaled with pad=1 too, instead of nothing)
 
 test set:
+- Accuracy: 0.903
+- Speed Score: 0.7448786192592592
 
+Worse than epoch10v1
 
 ### Evaluation (only covers during qualifiers)
 
