@@ -106,7 +106,7 @@ def process_image(img, img_size, stride, half):
 
 
 class VLMManager:
-    def __init__(self, yolo_paths: list[str], clip_path: str, upscaler_path: str, use_sahi: bool = True, siglip_trt: bool = False):
+    def __init__(self, yolo_paths: list[str], clip_path: str, upscaler_path: str, use_sahi: list, siglip_trt: bool = False):
         logging.info(f'Loading {len(yolo_paths)} YOLO models from {yolo_paths}. Using SAHI: {use_sahi}. Using SigLIP TensorRT: {siglip_trt}')
         self.device = torch.device('cuda:0')
 
@@ -292,8 +292,6 @@ class VLMManager:
 
             yolo_results.append(yolo_result)
 
-        #CHANGE THIS LINE FOR WBF THRESHOLD
-        wbf_thres = 0.3
         wbf_boxes = []
         for i, img in enumerate(images):
             boxes_list = []
