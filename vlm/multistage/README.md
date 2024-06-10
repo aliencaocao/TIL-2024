@@ -1,7 +1,7 @@
 # Muli Stage approach
 ## Overview
-1. YOLOv9 trained on single-class detection of targets in general
-2. Extract the bboxes as detected by YOLO, optionally using SAHI (Slicing Aided Hyper Inference)
+1. YOLOv6l6 trained on single-class detection of targets in general, using custom data too
+2. Extract the bboxes as detected by YOLO, optionally using SAHI (Slicing Aided Hyper Inference), helped for v9e but not v6l6
 3. Run each extracted bbox through Real-ESRGAN x4v3 model to upscale 4x
 4. Feed each bbox into a SigLIP and get similarity score VS caption (1/image)
 5. Choose the box with the highest similarity score for each caption
@@ -697,7 +697,7 @@ Compared to 0.881 for epoch 10 + fixed aug, this is just epoch 5 and proved to b
 
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled
-Same as above  0.884 but with training data upscaled 4x using real-esrgan x4v3 (pad=10 with image < 10 untouched)
+Same as above 0.884 but with training data upscaled 4x using real-esrgan x4v3 (pad=10 with image < 10 untouched)
 
 own test V2: 0.6516666666666666
 

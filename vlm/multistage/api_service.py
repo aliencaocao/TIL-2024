@@ -11,6 +11,8 @@ vlm_manager = VLMManager(
     clip_path='siglip-large-patch16-384-ft',
     upscaler_path='realesr-general-x4v3.pth',
     use_sahi=[False, False],
+    rotate_tta=[True, True],
+    flip_tta=[True, True],
     siglip_trt=False,  # set to True if using TensorRT SigLIP for finals
 )
 
