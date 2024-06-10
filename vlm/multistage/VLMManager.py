@@ -335,6 +335,8 @@ class VLMManager:
                 
                 yolo_results.append(yolo_result)
 
+        #CHANGE THIS LINE FOR WBF THRESHOLD
+        wbf_thres = 0.3
         wbf_boxes = []
         for i in range(len(images)):
             boxes_list = []
@@ -347,7 +349,7 @@ class VLMManager:
             boxes, scores, labels = weighted_boxes_fusion(
                 boxes_list, scores_list, labels_list,
                 weights=[1] * len(yolo_results),
-                iou_thr=0.5,
+                iou_thr=wbf_thres,
                 skip_box_thr=0.0001
             )
             boxes = boxes.tolist()
