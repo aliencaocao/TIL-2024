@@ -26,7 +26,7 @@ curr_model = Yolov6DetectionModel(
 per_img_result = get_sliced_prediction(
                         image,
                         curr_model,
-                        perform_standard_pred=False,
+                        perform_standard_pred=True,
                         postprocess_class_agnostic=True,
                         batch=6,
                         verbose=2,

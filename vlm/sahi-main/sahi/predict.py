@@ -284,7 +284,6 @@ def get_sliced_prediction(
     if num_slices > 1 and perform_standard_pred:
         prediction_result = get_prediction(
             image=[image],
-
             detection_model=detection_model,
             shift_amount=[0, 0],
             full_shape=[
@@ -293,7 +292,7 @@ def get_sliced_prediction(
             ],
             postprocess=None,
         )
-        object_prediction_list.extend(prediction_result.object_prediction_list)
+        object_prediction_list.extend(prediction_result.object_prediction_list if len(prediction_result.object_prediction_list) > 1 else prediction_result.object_prediction_list[0])
 
     # merge matching predictions
     if len(object_prediction_list) > 1:
