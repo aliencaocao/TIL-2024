@@ -49,6 +49,7 @@ class Yolov6DetectionModel:
         category_mapping: Optional[Dict] = None,
         category_remapping: Optional[Dict] = None,
         load_at_init: bool = True,
+        half: bool = True,
         # image_size: Union[Iterable, int] = None,
     ):
         """
@@ -81,7 +82,7 @@ class Yolov6DetectionModel:
         self._original_predictions = None
         self._object_prediction_list_per_image = None
 
-        self.half = True
+        self.half = half
 
         self.set_device()
 
@@ -217,6 +218,7 @@ class Yolov6DetectionModel:
         shift_amount_list = fix_shift_amount_list(shift_amount_list)
         full_shape_list = fix_full_shape_list(full_shape_list)
 
+        full_shape_list *= len(shift_amount_list)  # fix zip later as full_shape_list only has 1 item
         self._object_prediction_list_per_image = [
             [ObjectPrediction(
                 bbox=[x.item() for x in xyxy],
@@ -227,7 +229,7 @@ class Yolov6DetectionModel:
                 shift_amount=shift_amount,
                 full_shape=full_shape,
             ) for *xyxy, conf, cls in single_img_preds]
-            for single_img_preds, shift_amount, full_shape 
+            for single_img_preds, shift_amount, full_shape
             in zip(self._original_predictions, shift_amount_list, full_shape_list)
         ]
 
@@ -268,7 +270,7 @@ class Yolov6DetectionModel:
 
     @property
     def object_prediction_list(self):
-        return self._object_prediction_list_per_image[0]
+        return self._object_prediction_list_per_image
 
     @property
     def object_prediction_list_per_image(self):
