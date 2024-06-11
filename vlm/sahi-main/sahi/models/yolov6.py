@@ -6,8 +6,6 @@ from typing import Any, Dict, List, Optional, Union, Iterable
 import numpy as np
 import math
 import torch
-import itertools
-from tqdm import tqdm
 
 # This works locally because yolov6 folder is in repo but gitignored.
 # It also works in container because yolov6 folder is copied to /workspace
@@ -51,7 +49,8 @@ class Yolov6DetectionModel:
         category_mapping: Optional[Dict] = None,
         category_remapping: Optional[Dict] = None,
         load_at_init: bool = True,
-        image_size: Union[Iterable, int] = None,
+        half: bool = True,
+        # image_size: Union[Iterable, int] = None,
     ):
         """
         Init object detection/instance segmentation model.
@@ -79,11 +78,11 @@ class Yolov6DetectionModel:
         self.filter_confidence_threshold = filter_confidence_threshold
         self.category_mapping = category_mapping
         self.category_remapping = category_remapping
-        self.image_size = image_size
+        # self.image_size = image_size
         self._original_predictions = None
         self._object_prediction_list_per_image = None
 
-        self.half = True
+        self.half = half
 
         self.set_device()
 
@@ -156,6 +155,11 @@ class Yolov6DetectionModel:
         if not isinstance(images, list):
             images = [images]
 
+        # import copy
+        # images_np = copy.deepcopy(images)
+
+        orig_img_size = images[0].shape[:-1]
+
         for i in range(len(images)):
             images[i] = letterbox(
                 images[i], check_img_size(list(images[i].shape[:-1])), stride=self.model.stride
@@ -165,9 +169,7 @@ class Yolov6DetectionModel:
         images = images.half() if self.half else images.float()
         images /= 255
 
-        pred_results = torch.stack(list(itertools.chain.from_iterable(
-            self.model(batch) for batch in torch.split(images, num_batch)
-        )))
+        pred_results = self.model(images)
         
         dets = non_max_suppression(
             prediction=pred_results,
@@ -179,8 +181,19 @@ class Yolov6DetectionModel:
         )
 
         for i in range(len(dets)):
-            dets[i][:, :4] = Inferer.rescale(images[i].shape[1:], dets[i][:, :4], self.image_size).round()
+            dets[i][:, :4] = Inferer.rescale(images[i].shape[1:], dets[i][:, :4], orig_img_size).round()
             dets[i] = dets[i][dets[i][:, 4] >= self.filter_confidence_threshold]
+
+            # from PIL import Image, ImageDraw
+            # import time
+            # import os
+            # im = Image.fromarray(images_np[i])
+            # draw = ImageDraw.Draw(im)
+            # for *xyxy, conf, cls in dets[i]:
+            #     draw.rectangle(xyxy, fill=None, outline="red")
+
+            # os.makedirs("sahi_output", exist_ok=True)
+            # im.save(f"sahi_output/{int(time.time())}_slice{i+1}.png")
 
         self._original_predictions = dets
 
@@ -205,6 +218,7 @@ class Yolov6DetectionModel:
         shift_amount_list = fix_shift_amount_list(shift_amount_list)
         full_shape_list = fix_full_shape_list(full_shape_list)
 
+        full_shape_list *= len(shift_amount_list)  # fix zip later as full_shape_list only has 1 item
         self._object_prediction_list_per_image = [
             [ObjectPrediction(
                 bbox=[x.item() for x in xyxy],
@@ -215,7 +229,7 @@ class Yolov6DetectionModel:
                 shift_amount=shift_amount,
                 full_shape=full_shape,
             ) for *xyxy, conf, cls in single_img_preds]
-            for single_img_preds, shift_amount, full_shape 
+            for single_img_preds, shift_amount, full_shape
             in zip(self._original_predictions, shift_amount_list, full_shape_list)
         ]
 
@@ -256,7 +270,7 @@ class Yolov6DetectionModel:
 
     @property
     def object_prediction_list(self):
-        return self._object_prediction_list_per_image[0]
+        return self._object_prediction_list_per_image
 
     @property
     def object_prediction_list_per_image(self):
