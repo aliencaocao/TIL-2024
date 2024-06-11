@@ -5,8 +5,6 @@ import math
 import os
 import sys
 
-import torchvision.tv_tensors
-
 # os.environ['PYTORCH_NO_CUDA_MEMORY_CACHING'] = '1'
 
 sys.path.insert(0, "/workspace")
@@ -19,8 +17,6 @@ from yolov6.core.inferer import Inferer
 from typing import List, Optional
 import numpy as np
 import torch
-import torchvision
-from torchvision.transforms import v2
 from PIL import Image
 from ensemble_boxes import weighted_boxes_fusion
 from realesrgan import RealESRGANer
@@ -108,24 +104,16 @@ def process_image(img, img_size, stride, half):
 
     return image, img_src
 
+
 class VLMManager:
-    def __init__(self,
-                 yolo_paths: list[str],
-                 clip_path: str,
-                 upscaler_path: str,
-                 use_sahi: list[bool],
-                 rotate_tta: list[bool],
-                 flip_tta: list[bool],
-                 siglip_trt: bool = False):
+    def __init__(self, yolo_paths: list[str], clip_path: str, upscaler_path: str, use_sahi: list, siglip_trt: bool = False):
         logging.info(f'Loading {len(yolo_paths)} YOLO models from {yolo_paths}. Using SAHI: {use_sahi}. Using SigLIP TensorRT: {siglip_trt}')
         self.device = torch.device('cuda:0')
 
         self.use_sahi = use_sahi
-        self.rotate_tta = rotate_tta
-        self.flip_tta = flip_tta
         self.siglip_trt = siglip_trt
 
-        assert len(yolo_paths) == len(self.use_sahi) == len(self.rotate_tta) == len(self.flip_tta)
+        assert len(self.use_sahi) == len(yolo_paths)
 
         self.isyolov6 = ['yolov6' in yolo_path for yolo_path in yolo_paths]
         self.isyolov6_trt = [isyolov6 and yolo_path.endswith('.pth') for isyolov6, yolo_path in zip(self.isyolov6, yolo_paths)]
@@ -172,6 +160,9 @@ class VLMManager:
                 else:
                     curr_model = YOLO(yolo_path)
             self.yolo_models.append(curr_model)
+
+        self.yolo_wbf_weights = [1] * len(self.yolo_models)
+        assert len(self.yolo_models) == len(self.yolo_wbf_weights)
 
         logging.info(f'Warming up YOLO')
         for i in range(3):
@@ -247,96 +238,62 @@ class VLMManager:
         torch.cuda.empty_cache()  # clear up vram for inference
 
         # image is the raw bytes of a JPEG file
-        images = torch.stack([torchvision.io.decode_jpeg(
-            torch.frombuffer(b, dtype=torch.uint8)
-        ) for b in img_bytes])
-
+        images = [Image.open(io.BytesIO(b)) for b in img_bytes]
         yolo_results = []
         # YOLO object det with WBF
-        for use_sahi, rotate_tta, flip_tta, is_yolov6, yolo_model, isyolov6_trt in zip(
-            self.use_sahi, self.rotate_tta, self.flip_tta, self.isyolov6, self.yolo_models, self.isyolov6_trt
-        ):
-            tta_augs = [lambda img_or_bbox: img_or_bbox] # identity
+        for use_sahi, is_yolov6, yolo_model, isyolov6_trt in zip(self.use_sahi, self.isyolov6, self.yolo_models, self.isyolov6_trt):
+            if use_sahi:
+                yolo_result = []
+                for image in images:
+                    per_img_result = get_sliced_prediction(image, yolo_model, perform_standard_pred=True, postprocess_class_agnostic=True, batch=6, verbose=0).object_prediction_list
+                    per_img_result = [([r.bbox.minx / 1520, r.bbox.miny / 870, r.bbox.maxx / 1520, r.bbox.maxy / 870], r.score.value) for r in per_img_result]
+                    yolo_result.append(per_img_result)
+            elif is_yolov6:
+                img_size = check_img_size([870, 1520], s=yolo_model.stride if not isyolov6_trt else 32)
+                yolo_result = []
+                for image in images:
+                    img, img_src = process_image(img=image, img_size=img_size, stride=yolo_model.stride if not isyolov6_trt else 32, half=True)
+                    img = img.unsqueeze(0).to(self.device)  # expand batch dim
+                    pred_results = yolo_model(img)
+                    if isyolov6_trt: pred_results = pred_results[0].unsqueeze(0)  # TRT outputs 2 but 2nd is useless, need expand trt batch dim too since torch2trt flattens it
 
-            # FIXME: Current pipeline only works with transforms that are self-inverse.
+                    classes: Optional[List[int]] = None  # the classes to keep
+                    nms_conf_thres: float = 0.01
 
-            if rotate_tta:
-                # currently only using 180 because img shape must remain constant for TensorRT inference
-                tta_augs.append(lambda img_or_bbox: v2.functional.rotate(img_or_bbox, 180))
+                    # CHANGE THIS LINE FOR IOU THRESHOLD
+                    iou_thres: float = 0.3
+                    max_det: int = 10
+                    agnostic_nms: bool = False
 
-            if flip_tta:
-                tta_augs.append(v2.functional.horizontal_flip)
-                tta_augs.append(v2.functional.vertical_flip)
-                tta_augs.append(lambda img_or_bbox: v2.functional.horizontal_flip(v2.functional.vertical_flip(img_or_bbox)))
+                    det = non_max_suppression(pred_results, nms_conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
 
-            for tta_aug in tta_augs:
-                images_augmented = tta_aug(images).permute((0, 2, 3, 1)).numpy() # NCHW to NHWC
-                img_height, img_width = images_augmented.shape[1:3]
+                    # CHANGE THIS LINE FOR CONFIDENCE THRESHOLD
+                    filter_conf_thres = 0.25
+                    curr_img_detections = []
+                    if len(det):
+                        det[:, :4] = Inferer.rescale(img.shape[2:], det[:, :4], img_src.shape).round()
 
-                if use_sahi:
-                    yolo_result = []
-                    for image in images_augmented:
-                        per_img_result = get_sliced_prediction(image, yolo_model, perform_standard_pred=True, postprocess_class_agnostic=True, batch=6, verbose=0).object_prediction_list
-                        per_img_result = [([r.bbox.minx / img_width, r.bbox.miny / img_height, r.bbox.maxx / img_width, r.bbox.maxy / img_height], r.score.value) for r in per_img_result]
-                        yolo_result.append(per_img_result)
-                elif is_yolov6:
-                    img_size = check_img_size([870, 1520], s=yolo_model.stride if not isyolov6_trt else 32)
-                    yolo_result = []
-                    for image in images_augmented:
-                        img, img_src = process_image(img=image, img_size=img_size, stride=yolo_model.stride if not isyolov6_trt else 32, half=True)
-                        img = img.unsqueeze(0).to(self.device)  # expand batch dim
-                        pred_results = yolo_model(img)
-                        if isyolov6_trt: pred_results = pred_results[0].unsqueeze(0)  # TRT outputs 2 but 2nd is useless, need expand trt batch dim too since torch2trt flattens it
+                        norm_tensor = torch.tensor([1520, 870, 1520, 870])
+                        curr_img_detections = [
+                            [[x.item() for x in torch.tensor(xyxy) / norm_tensor], conf.item()]
+                            for *xyxy, conf, cls in reversed(det)
+                            if conf.item() >= filter_conf_thres
+                        ]
+                        if not curr_img_detections:
+                            # nothing passes filter_conf_thres so just use the highest conf pred
+                            *xyxy, conf, cls = det[-1]
+                            curr_img_detections = [[[x.item() for x in torch.tensor(xyxy) / norm_tensor], conf.item()]]
 
-                        classes: Optional[List[int]] = None  # the classes to keep
-                        nms_conf_thres: float = 0.01
+                    yolo_result.append(curr_img_detections)
+            else:
+                yolo_result = yolo_model.predict(images, imgsz=1600, conf=0.5, iou=0.1, max_det=10, verbose=False, augment=True)
+                yolo_result = [(r.boxes.xyxyn.tolist(), r.boxes.conf.tolist()) for r in yolo_result]  # WBF need normalized xyxy
+                yolo_result = [tuple(zip(*r)) for r in yolo_result]  # list of tuple[box, conf] in each image
 
-                        # CHANGE THIS LINE FOR IOU THRESHOLD
-                        iou_thres: float = 0.5
-                        max_det: int = 10
-                        agnostic_nms: bool = False
-
-                        det = non_max_suppression(pred_results, nms_conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
-
-                        # CHANGE THIS LINE FOR CONFIDENCE THRESHOLD
-                        filter_conf_thres = 0.25
-                        curr_img_detections = []
-                        if len(det):
-                            det[:, :4] = Inferer.rescale(img.shape[2:], det[:, :4], img_src.shape).round()
-
-                            norm_tensor = torch.tensor([img_width, img_height, img_width, img_height])
-                            curr_img_detections = [
-                                [[x.item() for x in torch.tensor(xyxy) / norm_tensor], conf.item()]
-                                for *xyxy, conf, cls in reversed(det)
-                                if conf.item() >= filter_conf_thres
-                            ]
-                            if not curr_img_detections:
-                                # nothing passes filter_conf_thres so just use the highest conf pred
-                                *xyxy, conf, cls = det[-1]
-                                curr_img_detections = [[[x.item() for x in torch.tensor(xyxy) / norm_tensor], conf.item()]]
-
-                        yolo_result.append(curr_img_detections)
-                else:
-                    yolo_result = yolo_model.predict(images_augmented, imgsz=1600, conf=0.5, iou=0.1, max_det=10, verbose=False, augment=True)
-                    yolo_result = [(r.boxes.xyxyn.tolist(), r.boxes.conf.tolist()) for r in yolo_result]  # WBF need normalized xyxy
-                    yolo_result = [tuple(zip(*r)) for r in yolo_result]  # list of tuple[box, conf] in each image
-                
-                whwh = torch.tensor([img_width, img_height, img_width, img_height])
-                for i, curr_img_detections in enumerate(yolo_result):
-                    augmented_bboxes, confs = zip(*curr_img_detections)
-                    # FIXME: this only works because all above transforms are self-inverse
-                    orig_bboxes = tta_aug(torchvision.tv_tensors.BoundingBoxes(
-                        torch.tensor(augmented_bboxes) * whwh,
-                        format="XYXY",
-                        canvas_size=(img_height, img_width),
-                    ))
-                    orig_bboxes /= whwh
-                    yolo_result[i] = list(zip(orig_bboxes.tolist(), confs))
-                
-                yolo_results.append(yolo_result)
+            yolo_results.append(yolo_result)
 
         wbf_boxes = []
-        for i in range(len(images)):
+        for i, img in enumerate(images):
             boxes_list = []
             scores_list = []
             labels_list = []
@@ -346,13 +303,13 @@ class VLMManager:
                 labels_list.append([0] * len(yolo_result[i]))
             boxes, scores, labels = weighted_boxes_fusion(
                 boxes_list, scores_list, labels_list,
-                weights=[1] * len(yolo_results),
-                iou_thr=0.5,
+                weights=self.yolo_wbf_weights,
+                iou_thr=wbf_thres,
                 skip_box_thr=0.0001
             )
             boxes = boxes.tolist()
             # normalize
-            h, w = images.shape[2:]
+            w, h = img.size
             boxes = [[x1 * w, y1 * h, x2 * w, y2 * h] for x1, y1, x2, y2 in boxes]
             wbf_boxes.append(boxes)
         assert len(wbf_boxes) == len(images)  # shld be == bs
@@ -362,16 +319,13 @@ class VLMManager:
         for im, boxes in zip(images, wbf_boxes):
             im_boxes = []
             for x1, y1, x2, y2 in boxes:
-                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-                # cropped = im.crop((x1, y1, x2, y2))
-                # cropped = np.asarray(cropped)
-                # crop, convert CHW to HWC, RGB to BGR
-                cropped = im[:, y1:y2, x1:x2].permute((1, 2, 0)).numpy()
+                cropped = im.crop((x1, y1, x2, y2))
+                cropped = np.asarray(cropped)
                 if not any(s <= 10 for s in cropped.shape[:2]):
                     cropped = self.upscaler_pad10.enhance(cropped, outscale=4)[0]
                 elif not any(s <= 1 for s in cropped.shape[:2]):
                     cropped = self.upscaler_pad1.enhance(cropped, outscale=4)[0]
-                else:
+                else:  # upscaler transposes CHW to HWC, so if upscaler not called then transpose manually
                     cropped = cropped.astype(np.uint8)
                 cropped = Image.fromarray(cropped)
                 im_boxes.append(cropped)

@@ -1,15 +1,22 @@
-from faster_whisper import WhisperModel
 import os
-
+import librosa
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
-MODEL_PATH= "model"
-# 2485 0.0307
+os.environ['HF_HOME'] = 'medium_model'
+os.environ['TRANSFORMERS_OFFLINE'] = '1'
+
+from faster_whisper import WhisperModel
+MODEL_PATH= "medium_model"
+# medium epoch5 0.99569 
 
 class ASRManager:
     def __init__(self):
         # initialize the model here
         self.frequency = 16000
-        self.model = WhisperModel(MODEL_PATH, device = "cuda", compute_type="float16")
+        self.model = WhisperModel(MODEL_PATH, device = "cuda", compute_type="float16", local_files_only = True)
+        w, _ = librosa.load('tester.wav',sr=self.frequency)
+        for i in range(3):
+            t = self.batch_transcribe_vad([w])
+        
         
     def clean(annotation):
         if "'" in annotation:
@@ -60,3 +67,6 @@ class ASRManager:
             output += segment.text
             
         return output
+    
+#_ = ASRManager()
+#print("Done")
