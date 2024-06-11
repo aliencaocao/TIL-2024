@@ -1,13 +1,14 @@
-# import os
-# os.environ['PYTORCH_NO_CUDA_MEMORY_CACHING'] = '1'
-
 import gc
 import io
 import logging
 import math
+import os
 import sys
 
+# os.environ['PYTORCH_NO_CUDA_MEMORY_CACHING'] = '1'
+
 sys.path.insert(0, "/workspace")
+sys.path.insert(0, "yolov6/")
 from yolov6.layers.common import DetectBackend
 from yolov6.data.data_augment import letterbox
 from yolov6.utils.nms import non_max_suppression
@@ -85,7 +86,8 @@ def check_img_size(img_size, s=32, floor=0):
         raise Exception(f"Unsupported type of img_size: {type(img_size)}")
 
     if new_size != img_size:
-        print(f'WARNING: --img-size {img_size} must be multiple of max stride {s}, updating to {new_size}')
+        pass
+        # print(f'WARNING: --img-size {img_size} must be multiple of max stride {s}, updating to {new_size}')
     return new_size if isinstance(img_size, list) else [new_size] * 2
 
 
@@ -104,31 +106,41 @@ def process_image(img, img_size, stride, half):
 
 
 class VLMManager:
-    def __init__(self, yolo_paths: list[str], clip_path: str, upscaler_path: str, use_sahi: bool = True, siglip_trt: bool = False):
+    def __init__(self, yolo_paths: list[str], clip_path: str, upscaler_path: str, use_sahi: list, siglip_trt: bool = False):
         logging.info(f'Loading {len(yolo_paths)} YOLO models from {yolo_paths}. Using SAHI: {use_sahi}. Using SigLIP TensorRT: {siglip_trt}')
         self.device = torch.device('cuda:0')
 
         self.use_sahi = use_sahi
         self.siglip_trt = siglip_trt
 
+        assert len(self.use_sahi) == len(yolo_paths)
+
         self.isyolov6 = ['yolov6' in yolo_path for yolo_path in yolo_paths]
+        self.isyolov6_trt = [isyolov6 and yolo_path.endswith('.pth') for isyolov6, yolo_path in zip(self.isyolov6, yolo_paths)]
 
         self.yolo_models = []
-        for yolo_path, isyolov6 in zip(yolo_paths, self.isyolov6):
+        for yolo_path, use_sahi, isyolov6, isyolov6_trt in zip(yolo_paths, self.use_sahi, self.isyolov6, self.isyolov6_trt):
             if isyolov6:
-                if self.use_sahi:
+                if use_sahi:
                     curr_model = Yolov6DetectionModel(
-                        model_path="29_ckpt_yolov6l6_blind.pt",
+                        model_path=yolo_path,
                         device="cuda",
                         category_mapping={"0": "target"},
-                        confidence_threshold=0.5,
-                        iou_threshold=0.5,
-                        image_size=[870, 1520],
+                        # SETTINGS HERE
+                        nms_confidence_threshold=0.01,
+                        iou_threshold=0.3,
+                        filter_confidence_threshold=0.25,
+                        # image_size=[896, 768],
                     )
-                else:
-                    curr_model = DetectBackend(yolo_path, device=self.device)
+                else:  # pytorch or TRT (yolov6 TRT dont support SAHI)
+                    if isyolov6_trt:
+                        curr_model = TRTModule()
+                        curr_model.load_state_dict(torch.load(yolo_path))
+                        curr_model.output_flattener._schema = curr_model.output_flattener._schema[:1]  # fix output schema as we only need the first output
+                    else:
+                        curr_model = DetectBackend(yolo_path, device=self.device)
             else:  # YOLOv8/Ultralytics
-                if self.use_sahi:
+                if use_sahi:
                     curr_model = AutoDetectionModel.from_pretrained(
                         model_type="yolov8",
                         model_path=yolo_path,
@@ -154,8 +166,8 @@ class VLMManager:
 
         logging.info(f'Warming up YOLO')
         for i in range(3):
-            for is_yolov6, yolo_model in zip(self.isyolov6, self.yolo_models):
-                if self.use_sahi:
+            for use_sahi, is_yolov6, yolo_model, isyolov6_trt in zip(self.use_sahi, self.isyolov6, self.yolo_models, self.isyolov6_trt):
+                if use_sahi:
                     get_sliced_prediction(  # noqa
                         Image.new('RGB', (1520, 870)),
                         yolo_model,
@@ -165,9 +177,13 @@ class VLMManager:
                         verbose=0,
                     ).object_prediction_list
                 elif is_yolov6:
-                    warmup_img_size = check_img_size([870, 1520], s=yolo_model.stride)
-                    yolo_model.model.half()
-                    yolo_model(torch.zeros(1, 3, *warmup_img_size).to(self.device).type_as(next(yolo_model.model.parameters())))  # warmup
+                    if isyolov6_trt:
+                        warmup_img_size = check_img_size([870, 1520], s=32)
+                        yolo_model(torch.zeros((1, 3, *warmup_img_size), dtype=torch.float16, device=self.device))[0]  # noqa, warmup
+                    else:
+                        warmup_img_size = check_img_size([870, 1520], s=yolo_model.stride)
+                        yolo_model.model.half()
+                        yolo_model(torch.zeros((1, 3, *warmup_img_size), dtype=next(yolo_model.model.parameters()).dtype, device=self.device))  # warmup
                 else:
                     yolo_model.predict(Image.new('RGB', (1520, 870)), imgsz=1600, conf=0.5, iou=0.1, max_det=10, verbose=False, augment=True)  # warmup
 
@@ -203,7 +219,7 @@ class VLMManager:
 
             logging.info(f'Warming up CLIP')
             for i in range(3):
-                self.clip_vision_trt(torch.ones(4, 3, 384, 384, device=self.device, dtype=torch.float16))
+                self.clip_vision_trt(torch.ones(10, 3, 384, 384, device=self.device, dtype=torch.float16))
                 self.clip_text_trt(torch.ones(1, 64, device=self.device, dtype=torch.int64))
         else:
             self.clip_model = CustomPipeline(task="zero-shot-image-classification",
@@ -225,28 +241,34 @@ class VLMManager:
         images = [Image.open(io.BytesIO(b)) for b in img_bytes]
         yolo_results = []
         # YOLO object det with WBF
-        for is_yolov6, yolo_model in zip(self.isyolov6, self.yolo_models):
-            if self.use_sahi:
+        for use_sahi, is_yolov6, yolo_model, isyolov6_trt in zip(self.use_sahi, self.isyolov6, self.yolo_models, self.isyolov6_trt):
+            if use_sahi:
                 yolo_result = []
                 for image in images:
-                    per_img_result = get_sliced_prediction(image, yolo_model, perform_standard_pred=True, postprocess_class_agnostic=True, batch=6, verbose=0).object_prediction_list
+                    per_img_result = get_sliced_prediction(
+                        image,
+                        yolo_model,
+                        perform_standard_pred=True,
+                        postprocess_class_agnostic=True,
+                        batch=6,
+                        verbose=0,
+                    ).object_prediction_list
                     per_img_result = [([r.bbox.minx / 1520, r.bbox.miny / 870, r.bbox.maxx / 1520, r.bbox.maxy / 870], r.score.value) for r in per_img_result]
                     yolo_result.append(per_img_result)
             elif is_yolov6:
-                img_size = check_img_size([870, 1520], s=yolo_model.stride)
+                img_size = check_img_size([870, 1520], s=yolo_model.stride if not isyolov6_trt else 32)
                 yolo_result = []
                 for image in images:
-                    img, img_src = process_image(img=image, img_size=img_size, stride=yolo_model.stride, half=True)
-                    img = img.to(self.device)
-                    if len(img.shape) == 3:
-                        img = img[None]  # expand for batch dim
+                    img, img_src = process_image(img=image, img_size=img_size, stride=yolo_model.stride if not isyolov6_trt else 32, half=True)
+                    img = img.unsqueeze(0).to(self.device)  # expand batch dim
                     pred_results = yolo_model(img)
+                    if isyolov6_trt: pred_results = pred_results[0].unsqueeze(0)  # TRT outputs 2 but 2nd is useless, need expand trt batch dim too since torch2trt flattens it
 
                     classes: Optional[List[int]] = None  # the classes to keep
                     nms_conf_thres: float = 0.01
 
                     # CHANGE THIS LINE FOR IOU THRESHOLD
-                    iou_thres: float = 0.5
+                    iou_thres: float = 0.3
                     max_det: int = 10
                     agnostic_nms: bool = False
 
@@ -286,7 +308,12 @@ class VLMManager:
                 boxes_list.append([r[0] for r in yolo_result[i]])
                 scores_list.append([r[1] for r in yolo_result[i]])
                 labels_list.append([0] * len(yolo_result[i]))
-            boxes, scores, labels = weighted_boxes_fusion(boxes_list, scores_list, labels_list, weights=self.yolo_wbf_weights, iou_thr=0.5, skip_box_thr=0.0001)
+            boxes, scores, labels = weighted_boxes_fusion(
+                boxes_list, scores_list, labels_list,
+                weights=self.yolo_wbf_weights,
+                iou_thr=wbf_thres,
+                skip_box_thr=0.0001
+            )
             boxes = boxes.tolist()
             # normalize
             w, h = img.size
@@ -303,8 +330,10 @@ class VLMManager:
                 cropped = np.asarray(cropped)
                 if not any(s <= 10 for s in cropped.shape[:2]):
                     cropped = self.upscaler_pad10.enhance(cropped, outscale=4)[0]
-                else:
+                elif not any(s <= 1 for s in cropped.shape[:2]):
                     cropped = self.upscaler_pad1.enhance(cropped, outscale=4)[0]
+                else:  # upscaler transposes CHW to HWC, so if upscaler not called then transpose manually
+                    cropped = cropped.astype(np.uint8)
                 cropped = Image.fromarray(cropped)
                 im_boxes.append(cropped)
             cropped_boxes.append(im_boxes)
@@ -316,6 +345,7 @@ class VLMManager:
         clip_results = []
         with torch.no_grad():
             for boxes, im_captions in zip(cropped_boxes, captions_list):
+                boxes = [img.resize((dim + 1 for dim in img.size), resample=Image.LANCZOS) if any(i == 1 for i in img.size) else img for img in boxes]  # fix bug in HF preprocessing where it wrongly takes any dim with 1 as channel(grayscale) when it could be h/w
                 if self.siglip_trt:
                     im_captions_templated = [f'This is a photo of {caption}.' for caption in im_captions]  # prompt template used in HF pipeline
                     vision_input = self.clip_image_processor(images=boxes, return_tensors='pt').to(self.device)
@@ -359,22 +389,22 @@ if __name__ == "__main__":
     import orjson
     import base64
 
-    vlm_manager = VLMManager(yolo_paths=['29_ckpt_yolov6l6_blind.pt'], clip_path='siglip-large-patch16-384-ft', upscaler_path='realesr-general-x4v3.pth', use_sahi=False)
+    vlm_manager = VLMManager(yolo_paths=['YOLOv6/29_ckpt_yolov6l6_blind_trt.pth'], clip_path='siglip/siglip-large-epoch5-augv2-upscale_0.892_cont_5ep_0.905', upscaler_path='realesr-general-x4v3.pth', use_sahi=[False])
     all_answers = []
 
-    batch_size = 4
+    batch_size = 1
     instances = []
     truths = []
     counter = 0
     max_samples = 12  # try on 12 samples only
-    with open("../../../advanced/vlm.jsonl", "r") as f:
+    with open("../../data/vlm.jsonl", "r") as f:
         for line in tqdm(f):
             if counter > max_samples:
                 break
             if line.strip() == "":
                 continue
             instance = orjson.loads(line.strip())
-            with open(f'../../../advanced/images/{instance["image"]}', "rb") as file:
+            with open(f'../../data/images/{instance["image"]}', "rb") as file:
                 image_bytes = file.read()
                 for annotation in instance["annotations"]:
                     instances.append(

@@ -1,7 +1,7 @@
 # Muli Stage approach
 ## Overview
-1. YOLOv9 trained on single-class detection of targets in general
-2. Extract the bboxes as detected by YOLO, optionally using SAHI (Slicing Aided Hyper Inference)
+1. YOLOv6l6 trained on single-class detection of targets in general, using custom data too
+2. Extract the bboxes as detected by YOLO, optionally using SAHI (Slicing Aided Hyper Inference), helped for v9e but not v6l6
 3. Run each extracted bbox through Real-ESRGAN x4v3 model to upscale 4x
 4. Feed each bbox into a SigLIP and get similarity score VS caption (1/image)
 5. Choose the box with the highest similarity score for each caption
@@ -146,10 +146,88 @@ TFDS_DATA_DIR=/kaggle/input/til-siglip-tfds BV_JAX_INIT=1 python3 -m big_vision.
 2. SigLIP on the other hand, uses Sigmoid as loss, which operates on a one-to-one caption-image pair. This means the model is more suited for the task at hand, despite a smaller scale than H variants.
 - Isolate the 2 tasks and evaluate separately on leaderboard: use pretrained SigLIP and iterate on YOLO until max, then turn to SigLIP.
 - Large BS works a lot better for SigLIP as mentioned by many contrastive loss papers, due to the need for more negative samples in a batch.
-- Iterating: train up to 5 epoch to validate helpfulness of change in hyperparams/augs then full train 15 epoch overnight
+- Iterating: train up to 5 epoch to validate helpfulness of change in hyperparams/augs then full train overnight\
+- 5 epoch proved enough for upscaled training data, 10epoch overfits.
 
 
-### Evaluation
+### Evaluation (for finals)
+Main change is switch to YOLOv6l6 as it shows better on own test set. Improvements were gained from training on full DSTA + own test set (denoted by "blind") below.
+However, SAHI did not seem to help for yolov6l6, likely due to it being nearly its limit already.
+Yolov6 is also faster than v9e
+
+#### YOLOv6l6 augsv3 epoch29 blind conf=0.25 iou=0.3 + siglip-large-patch16-384 epoch5_cont_5_upscaled_augsv2
+Same siglip as prev best of 0.905 on yolov9e
+https://console.cloud.google.com/ai/platform/locations/asia-southeast1/batch-predictions/4075404169781968896?project=dsta-angelhack
+
+test set:
+- Accuracy: 0.908
+- Speed Score: 0.7603945631481481
+
+
+#### YOLOv6l6 augsv3 epoch22 + epoch29 blind conf=0.25 iou=0.3 WBF + siglip-large-patch16-384 epoch5_cont_5_upscaled_augsv2
+epoch22 is not blind
+
+test set:
+- Accuracy: 0.909
+- Speed Score: 0.7636044942592592
+
+#### YOLOv6l6 augsv3 epoch 35 blind conf=0.25 iou=0.3 WBF + siglip-large-patch16-384 epoch5_cont_5_upscaled_augsv2
+epoch35 is a new train run with dsta+own test as the previous run resume from checkpoint was broken
+
+test set:
+- Accuracy: 0.905
+- Speed Score: 0.7485737964814815
+
+#### YOLOv6l6 augsv3 epoch29 blind + epoch 35 blind conf=0.25 iou=0.3 WBF + siglip-large-patch16-384 epoch5_cont_5_upscaled_augsv2
+
+test set:
+- Accuracy: 0.91
+- Speed Score: 0.7403886118518519
+WBF of 0.905+0.908 = 0.91
+
+
+#### YOLOv6l6 augsv3 epoch29 blind + epoch 35 blind conf=0.25 iou=0.3 WBF + siglip-large-patch16-384 epoch10v2
+New trained from start with 10 epochs, same as epoch5v2 below (data is fully upscaled with pad=1 too, instead of nothing)
+
+test set:
+- Accuracy: 0.903
+- Speed Score: 0.7448786192592592
+
+Worse than epoch10v1
+
+
+#### YOLOv6l6 augsv3 epoch29 blind + epoch 35 blind conf=0.5 iou=0.5 WBF 0.3 + siglip-large-patch16-384 epoch5v3
+Note: conf=0.5 and 0.25 did not make any score difference in 0.91 submission, so it is safe to change that
+v3 models are trained on expanded XS set (DSTA + own test, total 37120 boxes, where XS is 9214)
+
+(wrong settings conf=0.5 iou=0.3 wbf=0.5):
+- Accuracy: 0.913
+- Speed Score: 0.7173836805555556
+
+test set:
+- Accuracy: 0.913
+- Speed Score: 0.7431386035185186
+
+#### YOLOv6l6 augsv3 epoch29 blind + epoch 35 blind conf=0.5 iou=0.5 WBF 0.3 + siglip-large-patch16-384 epoch10v3
+
+(wrong settings conf=0.5 iou=0.3 wbf=0.5):
+- Accuracy: 0.897
+- Speed Score: 0.7440496585185186
+
+test set:
+- Accuracy: 0.897
+- Score: 0.757444107037037
+
+
+#### YOLOv6l6 augsv3 epoch29 blind + epoch 35 blind conf=0.5 iou=0.5 WBF 0.3 + siglip-so400m epoch5_merged
+SO400m but trained on merged XS data
+
+test set:
+- Accuracy: 0.902
+- Speed Score: 0.6077701553703703
+
+
+### Evaluation (only covers during qualifiers)
 
 #### YOLOv9c 0.99 0.769 on own test
 map@0.5 self calculated conf=0.1: 0.5095833333333334
@@ -652,7 +730,7 @@ Compared to 0.881 for epoch 10 + fixed aug, this is just epoch 5 and proved to b
 
 
 #### YOLOv9e 0.995 0.823 epoch65 iou=0.1 + siglip-large-patch16-384-augv2_epoch5-upscaled
-Same as above  0.884 but with training data upscaled 4x using real-esrgan x4v3 (pad=10 with image < 10 untouched)
+Same as above 0.884 but with training data upscaled 4x using real-esrgan x4v3 (pad=10 with image < 10 untouched)
 
 own test V2: 0.6516666666666666
 

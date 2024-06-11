@@ -267,9 +267,14 @@ def get_sliced_prediction(
             num_batch=num_batch,
         )
         # convert sliced predictions to full predictions
-        for object_prediction in prediction_result.object_prediction_list:
-            if object_prediction:  # if not empty
-                object_prediction_list.append(object_prediction.get_shifted_object_prediction())
+        for object_prediction_list_per_slice in prediction_result.object_prediction_list:
+            if isinstance(object_prediction_list_per_slice, list):  # needed for yolov6
+                for object_prediction in object_prediction_list_per_slice:
+                    if object_prediction:  # if not empty
+                        object_prediction_list.append(object_prediction.get_shifted_object_prediction())
+            else:
+                if object_prediction_list_per_slice:  # if not empty
+                    object_prediction_list.append(object_prediction_list_per_slice.get_shifted_object_prediction())
 
         # merge matching predictions during sliced prediction
         # if merge_buffer_length is not None and len(object_prediction_list) > merge_buffer_length:
@@ -279,7 +284,6 @@ def get_sliced_prediction(
     if num_slices > 1 and perform_standard_pred:
         prediction_result = get_prediction(
             image=[image],
-
             detection_model=detection_model,
             shift_amount=[0, 0],
             full_shape=[
@@ -288,7 +292,7 @@ def get_sliced_prediction(
             ],
             postprocess=None,
         )
-        object_prediction_list.extend(prediction_result.object_prediction_list)
+        object_prediction_list.extend(prediction_result.object_prediction_list if len(prediction_result.object_prediction_list) > 1 else prediction_result.object_prediction_list[0])
 
     # merge matching predictions
     if len(object_prediction_list) > 1:
