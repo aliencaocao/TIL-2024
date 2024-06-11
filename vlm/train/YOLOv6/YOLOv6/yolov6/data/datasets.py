@@ -15,10 +15,13 @@ from multiprocessing.pool import Pool
 
 import cv2
 import numpy as np
+import torchvision.tv_tensors
 from tqdm import tqdm
 from PIL import ExifTags, Image, ImageOps
 
 import torch
+import torchvision
+from torchvision.transforms import v2
 from torch.utils.data import Dataset
 import torch.distributed as dist
 
@@ -120,6 +123,13 @@ class TrainValDataset(Dataset):
             A.RandomBrightnessContrast(p=0.5),
             A.RandomGamma(p=0.2),
             A.ImageCompression(quality_lower=75, p=0.5),
+        ])
+        
+        self.sahi_random_crop = True
+        self.sahi_random_crop_wh = (768, 896)
+        self.random_crop = v2.Compose([
+            v2.RandomCrop(self.sahi_random_crop_wh[::-1]),
+            v2.SanitizeBoundingBoxes(labels_getter=lambda boxes_classes_tuple: boxes_classes_tuple[1]),
         ])
 
         tok = time.time()
@@ -260,6 +270,37 @@ class TrainValDataset(Dataset):
             transformed = self.albu_transforms(image=cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
             img, labels = self.general_augment(
                 cv2.cvtColor(transformed["image"], cv2.COLOR_RGB2BGR), labels)
+            
+            if self.sahi_random_crop:
+                whwh = torch.tensor(img.shape[1::-1] * 2)
+
+                # random crop for SAHI
+                img = torch.from_numpy(img.transpose((2, 0, 1)).copy())
+                boxes = torchvision.tv_tensors.BoundingBoxes(
+                    torch.from_numpy(labels[:, 1:]) * whwh,
+                    format="CXCYWH",
+                    canvas_size=(whwh[1].item(), whwh[0].item()),
+                )
+
+                img, (boxes, classes) = self.random_crop(img, (boxes, torch.from_numpy(labels[:, 0])))
+                labels = torch.hstack([classes[..., None], boxes]).numpy()
+
+                img = img.numpy().transpose((1, 2, 0))
+                boxes /= torch.tensor(self.sahi_random_crop_wh * 2)
+
+                # from PIL import Image, ImageDraw
+                # import time
+                # import os
+                # os.makedirs("crop_preview", exist_ok=True)
+                # im = Image.fromarray(img)
+                # draw = ImageDraw.Draw(im)
+                # for cx, cy, w, h in boxes:
+                #     x1 = (cx - w/2) * self.sahi_random_crop_wh[0]
+                #     y1 = (cy - h/2) * self.sahi_random_crop_wh[1]
+                #     x2 = (cx + w/2) * self.sahi_random_crop_wh[0]
+                #     y2 = (cy + h/2) * self.sahi_random_crop_wh[1]
+                #     draw.rectangle([x1, y1, x2, y2], fill=None, outline="red")
+                # im.save(f"crop_preview/{time.time()}.png")
 
         labels_out = torch.zeros((len(labels), 6))
         if len(labels):
