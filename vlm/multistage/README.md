@@ -146,7 +146,8 @@ TFDS_DATA_DIR=/kaggle/input/til-siglip-tfds BV_JAX_INIT=1 python3 -m big_vision.
 2. SigLIP on the other hand, uses Sigmoid as loss, which operates on a one-to-one caption-image pair. This means the model is more suited for the task at hand, despite a smaller scale than H variants.
 - Isolate the 2 tasks and evaluate separately on leaderboard: use pretrained SigLIP and iterate on YOLO until max, then turn to SigLIP.
 - Large BS works a lot better for SigLIP as mentioned by many contrastive loss papers, due to the need for more negative samples in a batch.
-- Iterating: train up to 5 epoch to validate helpfulness of change in hyperparams/augs then full train overnight
+- Iterating: train up to 5 epoch to validate helpfulness of change in hyperparams/augs then full train overnight\
+- 5 epoch proved enough for upscaled training data, 10epoch overfits.
 
 
 ### Evaluation (for finals)
@@ -193,6 +194,38 @@ test set:
 - Speed Score: 0.7448786192592592
 
 Worse than epoch10v1
+
+
+#### YOLOv6l6 augsv3 epoch29 blind + epoch 35 blind conf=0.5 iou=0.5 WBF 0.3 + siglip-large-patch16-384 epoch5v3
+Note: conf=0.5 and 0.25 did not make any score difference in 0.91 submission, so it is safe to change that
+v3 models are trained on expanded XS set (DSTA + own test, total 37120 boxes, where XS is 9214)
+
+(wrong settings conf=0.5 iou=0.3 wbf=0.5):
+- Accuracy: 0.913
+- Speed Score: 0.7173836805555556
+
+test set:
+- Accuracy: 0.913
+- Speed Score: 0.7431386035185186
+
+#### YOLOv6l6 augsv3 epoch29 blind + epoch 35 blind conf=0.5 iou=0.5 WBF 0.3 + siglip-large-patch16-384 epoch10v3
+
+(wrong settings conf=0.5 iou=0.3 wbf=0.5):
+- Accuracy: 0.897
+- Speed Score: 0.7440496585185186
+
+test set:
+- Accuracy: 0.897
+- Score: 0.757444107037037
+
+
+#### YOLOv6l6 augsv3 epoch29 blind + epoch 35 blind conf=0.5 iou=0.5 WBF 0.3 + siglip-so400m epoch5_merged
+SO400m but trained on merged XS data
+
+test set:
+- Accuracy: 0.902
+- Speed Score: 0.6077701553703703
+
 
 ### Evaluation (only covers during qualifiers)
 
