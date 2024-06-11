@@ -130,7 +130,7 @@ class VLMManager:
                         nms_confidence_threshold=0.01,
                         iou_threshold=0.3,
                         filter_confidence_threshold=0.25,
-                        image_size=[870, 1520],
+                        # image_size=[896, 768],
                     )
                 else:  # pytorch or TRT (yolov6 TRT dont support SAHI)
                     if isyolov6_trt:
@@ -245,7 +245,14 @@ class VLMManager:
             if use_sahi:
                 yolo_result = []
                 for image in images:
-                    per_img_result = get_sliced_prediction(image, yolo_model, perform_standard_pred=True, postprocess_class_agnostic=True, batch=6, verbose=0).object_prediction_list
+                    per_img_result = get_sliced_prediction(
+                        image,
+                        yolo_model,
+                        perform_standard_pred=(not is_yolov6),
+                        postprocess_class_agnostic=True,
+                        batch=6,
+                        verbose=0,
+                    ).object_prediction_list
                     per_img_result = [([r.bbox.minx / 1520, r.bbox.miny / 870, r.bbox.maxx / 1520, r.bbox.maxy / 870], r.score.value) for r in per_img_result]
                     yolo_result.append(per_img_result)
             elif is_yolov6:
@@ -309,11 +316,21 @@ class VLMManager:
             wbf_boxes.append(boxes)
         assert len(wbf_boxes) == len(images)  # shld be == bs
 
+        import os
+        os.makedirs("yolo_output", exist_ok=True)
+        from PIL import ImageDraw
+        import copy
+        import time
+
         # crop the boxes out
         cropped_boxes = []
         for im, boxes in zip(images, wbf_boxes):
             im_boxes = []
+            im_annotated = copy.deepcopy(im)
             for x1, y1, x2, y2 in boxes:
+                draw = ImageDraw.Draw(im_annotated)
+                draw.rectangle([x1, y1, x2, y2], fill=None, outline="red")
+
                 cropped = im.crop((x1, y1, x2, y2))
                 cropped = np.asarray(cropped)
                 if not any(s <= 10 for s in cropped.shape[:2]):
@@ -324,6 +341,7 @@ class VLMManager:
                     cropped = cropped.astype(np.uint8)
                 cropped = Image.fromarray(cropped)
                 im_boxes.append(cropped)
+            im_annotated.save(f"yolo_output/{time.time()}.png")
             cropped_boxes.append(im_boxes)
 
         captions_list = [[caption] for caption in captions]
