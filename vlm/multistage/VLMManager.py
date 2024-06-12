@@ -1,4 +1,3 @@
-import gc
 import io
 import logging
 import math
@@ -18,16 +17,11 @@ from typing import List, Optional
 import numpy as np
 import torch
 from PIL import Image
-from ensemble_boxes import weighted_boxes_fusion
 from realesrgan import RealESRGANer
 from realesrgan.archs.srvgg_arch import SRVGGNetCompact
-from sahi import AutoDetectionModel
-from sahi.models.yolov6 import Yolov6DetectionModel
-from sahi.predict import get_sliced_prediction
 from transformers import AutoImageProcessor, AutoModelForZeroShotImageClassification, AutoTokenizer, ZeroShotImageClassificationPipeline, SiglipTokenizer, SiglipImageProcessor
 from torch2trt import TRTModule
 from transformers.image_utils import load_image
-from ultralytics import YOLO
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -196,7 +190,6 @@ class VLMManager:
 
     def identify(self, img_bytes: list[bytes], captions: list[str]) -> list[list[int]]:
         logging.info('Predicting')
-        # gc.collect()
         torch.cuda.empty_cache()  # clear up vram for inference
 
         # image is the raw bytes of a JPEG file
@@ -308,10 +301,8 @@ class VLMManager:
                 x1, y1, x2, y2, conf = yolo_box[box_idx]
                 # convert to ltwh
                 bboxes.append([x1, y1, x2 - x1, y2 - y1])
-            except Exception as ex:  # TODO: yolov9 filtering
+            except Exception:
                 bboxes.append([300, 300, 50, 50])
-                print(caption, yolo_box, similarity_scores)
-                raise ex
 
         logging.info(f'Captions:\n{captions}\nBoxes:\n{bboxes}')
 
@@ -323,7 +314,7 @@ if __name__ == "__main__":
     import orjson
     import base64
 
-    vlm_manager = VLMManager(yolo_paths=['YOLOv6/29_ckpt_yolov6l6_blind_trt.pth'], clip_path='siglip/siglip-large-epoch5-augv2-upscale_0.892_cont_5ep_0.905', upscaler_path='realesr-general-x4v3.pth', use_sahi=[False])
+    vlm_manager = VLMManager(yolo_paths=['YOLOv6/29_ckpt_yolov6l6_blind_trt.pth'], sliced_yolo_paths=['YOLOv6/29_ckpt_yolov6l6_blind_trt.pth'], clip_path='siglip/siglip-large-epoch5-augv2-upscale_0.892_cont_5ep_0.905', upscaler_path='realesr-general-x4v3.pth', use_sahi=[False])
     all_answers = []
 
     batch_size = 1
