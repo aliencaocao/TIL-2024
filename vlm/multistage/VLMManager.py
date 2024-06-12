@@ -284,7 +284,7 @@ class VLMManager:
                     filter_conf_thres = 0.5
                     curr_img_detections = []
                     if len(det):
-                        det[:, :4] = Inferer.rescale(img.shape[2:], det[:, :4], img_src.shape).round()
+                        det[:, :4] = Inferer.rescale(img.shape[2:], det[:, :4], img_src.shape)
                         # Filter out the detections based on the confidence threshold
                         filtered_det = det[det[:, 4] >= filter_conf_thres]
 
