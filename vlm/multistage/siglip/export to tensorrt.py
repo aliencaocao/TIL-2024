@@ -8,7 +8,7 @@ text_model = model.text_model
 vision_model = model.vision_model
 
 dummy = torch.ones(1, 3, 384, 384, dtype=torch.float16, device='cuda')
-model_trt = torch2trt(vision_model, [dummy], fp16_mode=True, min_shapes=[(1, 3, 384, 384)], opt_shapes=[(4, 3, 384, 384)], max_shapes=[(10, 3, 384, 384)], use_onnx=True)
+model_trt = torch2trt(vision_model, [dummy], fp16_mode=True, min_shapes=[(1, 3, 384, 384)], opt_shapes=[(10, 3, 384, 384)], max_shapes=[(20, 3, 384, 384)], use_onnx=True)
 y = vision_model(dummy).pooler_output
 y_trt = model_trt(dummy)['pooler_output']
 torch.save(model_trt.state_dict(), 'vision_trt.pth')

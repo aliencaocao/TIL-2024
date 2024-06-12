@@ -191,7 +191,7 @@ class VLMManager:
                         yolo_model.model.half()
                         yolo_model(torch.zeros((1, 3, *warmup_img_size), dtype=next(yolo_model.model.parameters()).dtype, device=self.device))  # warmup
                 else:
-                    yolo_model.predict(Image.new('RGB', (1520, 870)), imgsz=1600, conf=0.5, iou=0.1, max_det=10, verbose=False, augment=True)  # warmup
+                    yolo_model.predict(Image.new('RGB', (1520, 870)), imgsz=1600, conf=0.5, iou=0.1, max_det=20, verbose=False, augment=True)  # warmup
 
         logging.info(f'Loading upscaler model from {upscaler_path}')
         rrdb_net = SRVGGNetCompact(num_in_ch=3, num_out_ch=3, num_feat=64, num_conv=32, upscale=4, act_type='prelu')
@@ -225,7 +225,7 @@ class VLMManager:
 
             logging.info(f'Warming up CLIP')
             for i in range(3):
-                self.clip_vision_trt(torch.ones(10, 3, 384, 384, device=self.device, dtype=torch.float16))
+                self.clip_vision_trt(torch.ones(20, 3, 384, 384, device=self.device, dtype=torch.float16))
                 self.clip_text_trt(torch.ones(1, 64, device=self.device, dtype=torch.int64))
         else:
             self.clip_model = CustomPipeline(task="zero-shot-image-classification",
@@ -275,7 +275,7 @@ class VLMManager:
 
                     # CHANGE THIS LINE FOR IOU THRESHOLD
                     iou_thres: float = 0.3
-                    max_det: int = 10
+                    max_det: int = 20
                     agnostic_nms: bool = False
 
                     det = non_max_suppression(pred_results, nms_conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
@@ -299,7 +299,7 @@ class VLMManager:
 
                     yolo_result.append(curr_img_detections)
             else:
-                yolo_result = yolo_model.predict(images, imgsz=1600, conf=0.3, iou=0.1, max_det=10, verbose=False, augment=True)
+                yolo_result = yolo_model.predict(images, imgsz=1600, conf=0.3, iou=0.1, max_det=20, verbose=False, augment=True)
                 yolo_result = [(r.boxes.xyxyn.tolist(), r.boxes.conf.tolist()) for r in yolo_result]  # WBF need normalized xyxy
                 yolo_result = [tuple(zip(*r)) for r in yolo_result]  # list of tuple[box, conf] in each image
 
