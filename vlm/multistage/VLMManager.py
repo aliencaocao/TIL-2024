@@ -284,15 +284,22 @@ class VLMManager:
                     filter_conf_thres = 0.5
                     curr_img_detections = []
                     if len(det):
-                        det[:, :4] = Inferer.rescale(img.shape[2:], det[:, :4], img_src.shape).round()
+                        det[:, :4] = Inferer.rescale(image.shape[2:], det[:, :4], img_src.shape).round()
+                        # Filter out the detections based on the confidence threshold
+                        filtered_det = det[det[:, 4] >= filter_conf_thres]
 
-                        norm_tensor = torch.tensor([1520, 870, 1520, 870])
-                        curr_img_detections = [
-                            [[x.item() for x in torch.tensor(xyxy) / norm_tensor], conf.item()]
-                            for *xyxy, conf, cls in reversed(det)
-                            if conf.item() >= filter_conf_thres
-                        ]
-                        if not curr_img_detections:
+                        # If there are no detections that pass the threshold, use the one with the highest confidence
+                        if len(filtered_det) == 0:
+                            filtered_det = det_tensor[-1].unsqueeze(0)
+
+                        # Normalize the bounding box coordinates
+                        norm_tensor = torch.tensor([1520, 870, 1520, 870], device=device)
+                        normalized_xyxy = filtered_det[:, :4] / norm_tensor
+
+                        # Combine the normalized coordinates and the confidence scores
+                        curr_img_detections = torch.cat((normalized_xyxy, filtered_det[:, 4].unsqueeze(1)), dim=1)
+
+                        if not curr_img_detections.all():
                             # nothing passes filter_conf_thres so just use the highest conf pred
                             *xyxy, conf, cls = det[-1]
                             curr_img_detections = [[[x.item() for x in torch.tensor(xyxy) / norm_tensor], conf.item()]]
