@@ -106,31 +106,37 @@ def process_image(img, img_size, stride, half):
 
 
 class VLMManager:
-    def __init__(self, yolo_paths: list[str], clip_path: str, upscaler_path: str, use_sahi: list, siglip_trt: bool = False):
+    def __init__(self, yolo_paths: list[str], sliced_yolo_paths: list[str], clip_path: str, upscaler_path: str, use_sahi: list, siglip_trt: bool = False):
         logging.info(f'Loading {len(yolo_paths)} YOLO models from {yolo_paths}. Using SAHI: {use_sahi}. Using SigLIP TensorRT: {siglip_trt}')
         self.device = torch.device('cuda:0')
 
         self.use_sahi = use_sahi
         self.siglip_trt = siglip_trt
 
-        assert len(self.use_sahi) == len(yolo_paths)
+        assert len(self.use_sahi) == len(yolo_paths) == len(sliced_yolo_paths)
 
         self.isyolov6 = ['yolov6' in yolo_path for yolo_path in yolo_paths]
+        self.sliced_isyolov6 = ['yolov6' in sliced_yolo_path for sliced_yolo_path in sliced_yolo_paths]
+        assert self.isyolov6 == self.sliced_isyolov6, \
+            "Sliced and non-sliced model must either be both YOLOv6 or non-YOLOv6"
+
         self.isyolov6_trt = [isyolov6 and yolo_path.endswith('.pth') for isyolov6, yolo_path in zip(self.isyolov6, yolo_paths)]
 
         self.yolo_models = []
-        for yolo_path, use_sahi, isyolov6, isyolov6_trt in zip(yolo_paths, self.use_sahi, self.isyolov6, self.isyolov6_trt):
+        for yolo_path, sahi_yolo_path, use_sahi, isyolov6, isyolov6_trt in zip(yolo_paths, sliced_yolo_paths, self.use_sahi, self.isyolov6, self.isyolov6_trt):
             if isyolov6:
                 if use_sahi:
                     curr_model = Yolov6DetectionModel(
                         model_path=yolo_path,
+                        sliced_model_path=sahi_yolo_path,
                         device="cuda",
                         category_mapping={"0": "target"},
                         # SETTINGS HERE
                         nms_confidence_threshold=0.01,
                         iou_threshold=0.3,
                         filter_confidence_threshold=0.25,
-                        # image_size=[896, 768],
+                        full_image_size=(870, 1520),
+                        sliced_image_size=(870, 760),
                     )
                 else:  # pytorch or TRT (yolov6 TRT dont support SAHI)
                     if isyolov6_trt:
@@ -275,7 +281,7 @@ class VLMManager:
                     det = non_max_suppression(pred_results, nms_conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
 
                     # CHANGE THIS LINE FOR CONFIDENCE THRESHOLD
-                    filter_conf_thres = 0.25
+                    filter_conf_thres = 0.5
                     curr_img_detections = []
                     if len(det):
                         det[:, :4] = Inferer.rescale(img.shape[2:], det[:, :4], img_src.shape).round()
@@ -293,7 +299,7 @@ class VLMManager:
 
                     yolo_result.append(curr_img_detections)
             else:
-                yolo_result = yolo_model.predict(images, imgsz=1600, conf=0.5, iou=0.1, max_det=10, verbose=False, augment=True)
+                yolo_result = yolo_model.predict(images, imgsz=1600, conf=0.3, iou=0.1, max_det=10, verbose=False, augment=True)
                 yolo_result = [(r.boxes.xyxyn.tolist(), r.boxes.conf.tolist()) for r in yolo_result]  # WBF need normalized xyxy
                 yolo_result = [tuple(zip(*r)) for r in yolo_result]  # list of tuple[box, conf] in each image
 
@@ -311,7 +317,7 @@ class VLMManager:
             boxes, scores, labels = weighted_boxes_fusion(
                 boxes_list, scores_list, labels_list,
                 weights=self.yolo_wbf_weights,
-                iou_thr=wbf_thres,
+                iou_thr=0.5,
                 skip_box_thr=0.0001
             )
             boxes = boxes.tolist()

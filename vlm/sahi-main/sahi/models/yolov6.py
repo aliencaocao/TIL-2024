@@ -41,6 +41,7 @@ class Yolov6DetectionModel:
     def __init__(
         self,
         model_path: Optional[str] = None,
+        sliced_model_path: Optional[str] = None,
         model: Optional[Any] = None,
         device: Optional[str] = None,
         nms_confidence_threshold: float = 0.01,
@@ -50,7 +51,8 @@ class Yolov6DetectionModel:
         category_remapping: Optional[Dict] = None,
         load_at_init: bool = True,
         half: bool = True,
-        # image_size: Union[Iterable, int] = None,
+        full_image_size: Union[Iterable, int] = None,
+        sliced_image_size: Union[Iterable, int] = None,
     ):
         """
         Init object detection/instance segmentation model.
@@ -71,6 +73,7 @@ class Yolov6DetectionModel:
                 Inference input size.
         """
         self.model_path = model_path
+        self.sliced_model_path = sliced_model_path
         self.model = None
         self.device = device
         self.nms_confidence_threshold = nms_confidence_threshold
@@ -78,7 +81,8 @@ class Yolov6DetectionModel:
         self.filter_confidence_threshold = filter_confidence_threshold
         self.category_mapping = category_mapping
         self.category_remapping = category_remapping
-        # self.image_size = image_size
+        self.full_image_size = full_image_size
+        self.sliced_image_size = sliced_image_size
         self._original_predictions = None
         self._object_prediction_list_per_image = None
 
@@ -102,8 +106,10 @@ class Yolov6DetectionModel:
     def fix_model_dtype(self):
         if self.half and self.device != "cpu":
             self.model.model.half()
+            self.sliced_model.model.half()
         else:
             self.model.model.float()
+            self.sliced_model.model.float()
             self.half = False
 
     def load_model(self):
@@ -113,6 +119,7 @@ class Yolov6DetectionModel:
         (self.model_path, self.config_path, and self.device should be utilized)
         """
         self.model = DetectBackend(weights=self.model_path, device=self.device)
+        self.sliced_model = DetectBackend(weights=self.sliced_model_path, device=self.device)
         self.fix_model_dtype()
 
     def set_model(self, model: Any, **kwargs):
@@ -122,8 +129,9 @@ class Yolov6DetectionModel:
             model: Any
                 Loaded model
         """
-        self.model = model
-        self.fix_model_dtype()
+        # self.model = model
+        # self.fix_model_dtype()
+        raise Exception("Yolov6DetectionModel.set_model may not be called as two models must be supplied")
 
     def set_device(self):
         """
@@ -138,7 +146,7 @@ class Yolov6DetectionModel:
         """
         Unloads the model from CPU/GPU.
         """
-        self.model = None
+        self.model = self.sliced_model = None
         if is_available("torch"):
             from sahi.utils.torch import empty_cuda_cache
 
@@ -169,7 +177,16 @@ class Yolov6DetectionModel:
         images = images.half() if self.half else images.float()
         images /= 255
 
-        pred_results = self.model(images)
+        assert orig_img_size in (self.full_image_size, self.sliced_image_size), \
+            f"Image size must be either the full image size {self.full_image_size} " \
+            f"or the sliced image size {self.sliced_image_size}; got {orig_img_size}"
+
+        if orig_img_size == self.full_image_size:
+            print("Using full model for images of size", orig_img_size)
+            pred_results = self.model(images)
+        else:
+            print("Using sliced model for images of size", orig_img_size)
+            pred_results = self.sliced_model(images)
         
         dets = non_max_suppression(
             prediction=pred_results,
