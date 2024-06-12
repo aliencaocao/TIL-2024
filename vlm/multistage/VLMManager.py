@@ -318,8 +318,9 @@ class VLMManager:
             scores_list = []
             labels_list = []
             for yolo_result in yolo_results:
-                boxes_list.append([r[0] for r in yolo_result[i]])
-                scores_list.append([r[1] for r in yolo_result[i]])
+                yolo_result[i] = yolo_result[i].tolist()
+                boxes_list.append([r[:4] for r in yolo_result[i]])
+                scores_list.append([r[4] for r in yolo_result[i]])
                 labels_list.append([0] * len(yolo_result[i]))
             boxes, scores, labels = weighted_boxes_fusion(
                 boxes_list, scores_list, labels_list,
