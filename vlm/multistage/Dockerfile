@@ -45,13 +45,14 @@ COPY realesr-general-x4v3.pth realesr-general-x4v3.pth
 # COPY yolov6l6_epoch22_notpruned.pt yolov6l6_epoch22_notpruned.pt
 # COPY yolov6l6_epoch22_notpruned_trt.pth yolov6l6_epoch22_notpruned_trt.pth
 # COPY yolov9e_0.995_0.823_epoch65.pt yolov9e_0.995_0.823_epoch65.pt
-COPY 29_ckpt_yolov6l6_blind.pt 29_ckpt_yolov6l6_blind.pt
-COPY 35_ckpt_yolov6l6_blind_run2.pt 35_ckpt_yolov6l6_blind_run2.pt
-COPY 68_ckpt_yolov6l6_blind_dstaxs7444.pt 68_ckpt_yolov6l6_blind_dstaxs7444.pt
+# COPY 29_ckpt_yolov6l6_blind.pt 29_ckpt_yolov6l6_blind.pt
+# COPY 35_ckpt_yolov6l6_blind_run2.pt 35_ckpt_yolov6l6_blind_run2.pt
+# COPY 35_ckpt_yolov6l6_blind_run2_trt.pth 35_ckpt_yolov6l6_blind_run2_trt.pth
+COPY 68_ckpt_yolov6l6_blind_dstaxs7444_trt.pth 68_ckpt_yolov6l6_blind_dstaxs7444_trt.pth
 # COPY 30_ckpt_yolov6l6_sliced_blind_dstaxs7444.pt 30_ckpt_yolov6l6_sliced_blind_dstaxs7444.pt
 # COPY 29_ckpt_yolov6l6_blind_trt.pth 29_ckpt_yolov6l6_blind_trt.pth
 #COPY best_yolov6l6.pt best_yolov6l6.pt
-COPY siglip-large-patch16-384-ft siglip-large-patch16-384-ft
+COPY siglip_model_epoch5v3_merged siglip_model_epoch5v3_merged
 
 COPY api_service.py api_service.py
 COPY VLMManager.py VLMManager.py

@@ -10,7 +10,7 @@ vlm_manager = VLMManager(
     yolo_paths=[
         # '29_ckpt_yolov6l6_blind.pt',
         # '35_ckpt_yolov6l6_blind_run2.pt',
-        '68_ckpt_yolov6l6_blind_dstaxs7444.pt',
+        '68_ckpt_yolov6l6_blind_dstaxs7444_trt.pth',
     ],
     
     # Ignored if non-YOLOv6 or non-SAHI.
@@ -18,13 +18,13 @@ vlm_manager = VLMManager(
     sliced_yolo_paths=[
         # '29_ckpt_yolov6l6_blind.pt',
         # '35_ckpt_yolov6l6_blind_run2.pt',
-        '68_ckpt_yolov6l6_blind_dstaxs7444.pt',
+        '68_ckpt_yolov6l6_blind_dstaxs7444_trt.pth',
     ],
 
-    clip_path='siglip-large-patch16-384-ft',
+    clip_path='siglip_model_epoch5v3_merged',
     upscaler_path='realesr-general-x4v3.pth',
     use_sahi=[False],
-    siglip_trt=False,  # set to True if using TensorRT SigLIP for finals
+    siglip_trt=True,  # set to True if using TensorRT SigLIP for finals
 )
 
 
