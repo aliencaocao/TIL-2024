@@ -290,10 +290,10 @@ class VLMManager:
 
                         # If there are no detections that pass the threshold, use the one with the highest confidence
                         if len(filtered_det) == 0:
-                            filtered_det = det_tensor[-1].unsqueeze(0)
+                            filtered_det = det[-1].unsqueeze(0)
 
                         # Normalize the bounding box coordinates
-                        norm_tensor = torch.tensor([1520, 870, 1520, 870], device=device)
+                        norm_tensor = torch.tensor([1520, 870, 1520, 870], device=self.device)
                         normalized_xyxy = filtered_det[:, :4] / norm_tensor
 
                         # Combine the normalized coordinates and the confidence scores
