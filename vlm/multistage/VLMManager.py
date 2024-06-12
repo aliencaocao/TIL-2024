@@ -113,7 +113,8 @@ class VLMManager:
         self.use_sahi = use_sahi
         self.siglip_trt = siglip_trt
 
-        assert len(self.use_sahi) == len(yolo_paths) == len(sliced_yolo_paths)
+        assert len(self.use_sahi) == len(yolo_paths) == len(sliced_yolo_paths) == 1, \
+            "WBF removed. Only 1 model can be used."
 
         self.isyolov6 = ['yolov6' in yolo_path for yolo_path in yolo_paths]
         self.sliced_isyolov6 = ['yolov6' in sliced_yolo_path for sliced_yolo_path in sliced_yolo_paths]
@@ -124,74 +125,29 @@ class VLMManager:
 
         self.yolo_models = []
         for yolo_path, sahi_yolo_path, use_sahi, isyolov6, isyolov6_trt in zip(yolo_paths, sliced_yolo_paths, self.use_sahi, self.isyolov6, self.isyolov6_trt):
-            if isyolov6:
-                if use_sahi:
-                    curr_model = Yolov6DetectionModel(
-                        model_path=yolo_path,
-                        sliced_model_path=sahi_yolo_path,
-                        device="cuda",
-                        category_mapping={"0": "target"},
-                        # SETTINGS HERE
-                        nms_confidence_threshold=0.01,
-                        iou_threshold=0.3,
-                        filter_confidence_threshold=0.25,
-                        full_image_size=(870, 1520),
-                        sliced_image_size=(870, 760),
-                    )
-                else:  # pytorch or TRT (yolov6 TRT dont support SAHI)
-                    if isyolov6_trt:
-                        curr_model = TRTModule()
-                        curr_model.load_state_dict(torch.load(yolo_path))
-                        curr_model.output_flattener._schema = curr_model.output_flattener._schema[:1]  # fix output schema as we only need the first output
-                    else:
-                        curr_model = DetectBackend(yolo_path, device=self.device)
-            else:  # YOLOv8/Ultralytics
-                if use_sahi:
-                    curr_model = AutoDetectionModel.from_pretrained(
-                        model_type="yolov8",
-                        model_path=yolo_path,
-                        confidence_threshold=0.5,
-                        image_size=896,
-                        standard_pred_image_size=1600,
-                        device="cuda",
-                        cfg={
-                            "task": 'detect',
-                            "names": {'0': 'target'},
-                            "standard_pred_image_size": (960, 1600),
-                            "standard_pred_model_path": f'{yolo_path.rsplit(".", 1)[0]}_bs1.engine',
-                            "imgsz": (768, 896),
-                            "half": True,
-                        },
-                    )
-                else:
-                    curr_model = YOLO(yolo_path)
+            # pytorch or TRT (yolov6 TRT dont support SAHI)
+            if isyolov6_trt:
+                curr_model = TRTModule()
+                curr_model.load_state_dict(torch.load(yolo_path))
+                curr_model.output_flattener._schema = curr_model.output_flattener._schema[:1]  # fix output schema as we only need the first output
+            else:
+                curr_model = DetectBackend(yolo_path, device=self.device)
+
             self.yolo_models.append(curr_model)
 
-        self.yolo_wbf_weights = [1] * len(self.yolo_models)
-        assert len(self.yolo_models) == len(self.yolo_wbf_weights)
+        # self.yolo_wbf_weights = [1] * len(self.yolo_models)
+        # assert len(self.yolo_models) == len(self.yolo_wbf_weights)
 
         logging.info(f'Warming up YOLO')
         for i in range(3):
             for use_sahi, is_yolov6, yolo_model, isyolov6_trt in zip(self.use_sahi, self.isyolov6, self.yolo_models, self.isyolov6_trt):
-                if use_sahi:
-                    get_sliced_prediction(  # noqa
-                        Image.new('RGB', (1520, 870)),
-                        yolo_model,
-                        perform_standard_pred=True,
-                        postprocess_class_agnostic=True,
-                        batch=6,
-                        verbose=0,
-                    ).object_prediction_list
-                elif is_yolov6:
-                    if isyolov6_trt:
-                        warmup_img_size = check_img_size([870, 1520], s=32)
-                        yolo_model(torch.zeros((1, 3, *warmup_img_size), dtype=torch.float16, device=self.device))[0]  # noqa, warmup
-                    else:
-                        warmup_img_size = check_img_size([870, 1520], s=yolo_model.stride)
-                        yolo_model.model.half()
-                        yolo_model(torch.zeros((1, 3, *warmup_img_size), dtype=next(yolo_model.model.parameters()).dtype, device=self.device))  # warmup
+                if isyolov6_trt:
+                    warmup_img_size = check_img_size([870, 1520], s=32)
+                    yolo_model(torch.zeros((1, 3, *warmup_img_size), dtype=torch.float16, device=self.device))[0]  # noqa, warmup
                 else:
-                    yolo_model.predict(Image.new('RGB', (1520, 870)), imgsz=1600, conf=0.5, iou=0.1, max_det=20, verbose=False, augment=True)  # warmup
+                    warmup_img_size = check_img_size([870, 1520], s=yolo_model.stride)
+                    yolo_model.model.half()
+                    yolo_model(torch.zeros((1, 3, *warmup_img_size), dtype=next(yolo_model.model.parameters()).dtype, device=self.device))  # warmup
 
         logging.info(f'Loading upscaler model from {upscaler_path}')
         rrdb_net = SRVGGNetCompact(num_in_ch=3, num_out_ch=3, num_feat=64, num_conv=32, upscale=4, act_type='prelu')
@@ -240,7 +196,7 @@ class VLMManager:
 
     def identify(self, img_bytes: list[bytes], captions: list[str]) -> list[list[int]]:
         logging.info('Predicting')
-        gc.collect()
+        # gc.collect()
         torch.cuda.empty_cache()  # clear up vram for inference
 
         # image is the raw bytes of a JPEG file
@@ -248,99 +204,60 @@ class VLMManager:
         yolo_results = []
         # YOLO object det with WBF
         for use_sahi, is_yolov6, yolo_model, isyolov6_trt in zip(self.use_sahi, self.isyolov6, self.yolo_models, self.isyolov6_trt):
-            if use_sahi:
-                yolo_result = []
-                for image in images:
-                    per_img_result = get_sliced_prediction(
-                        image,
-                        yolo_model,
-                        perform_standard_pred=True,
-                        postprocess_class_agnostic=True,
-                        batch=6,
-                        verbose=0,
-                    ).object_prediction_list
-                    per_img_result = [([r.bbox.minx / 1520, r.bbox.miny / 870, r.bbox.maxx / 1520, r.bbox.maxy / 870], r.score.value) for r in per_img_result]
-                    yolo_result.append(per_img_result)
-            elif is_yolov6:
-                img_size = check_img_size([870, 1520], s=yolo_model.stride if not isyolov6_trt else 32)
-                yolo_result = []
-                for image in images:
-                    img, img_src = process_image(img=image, img_size=img_size, stride=yolo_model.stride if not isyolov6_trt else 32, half=True)
-                    img = img.unsqueeze(0).to(self.device)  # expand batch dim
-                    pred_results = yolo_model(img)
-                    if isyolov6_trt: pred_results = pred_results[0].unsqueeze(0)  # TRT outputs 2 but 2nd is useless, need expand trt batch dim too since torch2trt flattens it
+            img_size = check_img_size([870, 1520], s=yolo_model.stride if not isyolov6_trt else 32)
+            yolo_result = []
+            for image in images:
+                img, img_src = process_image(img=image, img_size=img_size, stride=yolo_model.stride if not isyolov6_trt else 32, half=True)
+                img = img.unsqueeze(0).to(self.device)  # expand batch dim
+                pred_results = yolo_model(img)
+                if isyolov6_trt: pred_results = pred_results[0].unsqueeze(0)  # TRT outputs 2 but 2nd is useless, need expand trt batch dim too since torch2trt flattens it
 
-                    classes: Optional[List[int]] = None  # the classes to keep
-                    nms_conf_thres: float = 0.01
+                classes: Optional[List[int]] = None  # the classes to keep
+                nms_conf_thres: float = 0.01
 
-                    # CHANGE THIS LINE FOR IOU THRESHOLD
-                    iou_thres: float = 0.3
-                    max_det: int = 20
-                    agnostic_nms: bool = False
+                # CHANGE THIS LINE FOR IOU THRESHOLD
+                iou_thres: float = 0.3
+                max_det: int = 20
+                agnostic_nms: bool = False
 
-                    det = non_max_suppression(pred_results, nms_conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
+                det = non_max_suppression(pred_results, nms_conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
 
-                    # CHANGE THIS LINE FOR CONFIDENCE THRESHOLD
-                    filter_conf_thres = 0.5
-                    curr_img_detections = []
-                    if len(det):
-                        det[:, :4] = Inferer.rescale(img.shape[2:], det[:, :4], img_src.shape)
-                        # Filter out the detections based on the confidence threshold
-                        filtered_det = det[det[:, 4] >= filter_conf_thres]
+                # CHANGE THIS LINE FOR CONFIDENCE THRESHOLD
+                filter_conf_thres = 0.5
+                curr_img_detections = []
+                if len(det):
+                    det[:, :4] = Inferer.rescale(img.shape[2:], det[:, :4], img_src.shape)
+                    # Filter out the detections based on the confidence threshold
+                    filtered_det = det[det[:, 4] >= filter_conf_thres]
 
-                        # If there are no detections that pass the threshold, use the one with the highest confidence
-                        if len(filtered_det) == 0:
-                            filtered_det = det[-1].unsqueeze(0)
+                    # If there are no detections that pass the threshold, use the one with the highest confidence
+                    if len(filtered_det) == 0:
+                        filtered_det = det[-1].unsqueeze(0)
 
-                        # Normalize the bounding box coordinates
-                        norm_tensor = torch.tensor([1520, 870, 1520, 870], device=self.device)
-                        normalized_xyxy = filtered_det[:, :4] / norm_tensor
+                    # Normalize the bounding box coordinates
+                    # norm_tensor = torch.tensor([1520, 870, 1520, 870], device=self.device)
+                    normalized_xyxy = filtered_det[:, :4]
 
-                        # Combine the normalized coordinates and the confidence scores
-                        curr_img_detections = torch.cat((normalized_xyxy, filtered_det[:, 4].unsqueeze(1)), dim=1)
+                    # Combine the normalized coordinates and the confidence scores
+                    curr_img_detections = torch.cat((normalized_xyxy, filtered_det[:, 4].unsqueeze(1)), dim=1).tolist()
+                    # curr_img_detections = torch.ones((0,)).tolist()
 
-                        if not curr_img_detections.all():
-                            # nothing passes filter_conf_thres so just use the highest conf pred
-                            *xyxy, conf, cls = det[-1]
-                            curr_img_detections = [[[x.item() for x in torch.tensor(xyxy) / norm_tensor], conf.item()]]
+                    # if not curr_img_detections:
+                    #     # nothing passes filter_conf_thres so just use the highest conf pred
+                    #     # det[-1, :4] /= norm_tensor
+                    #     curr_img_detections = [det[-1, :5].tolist()]
 
-                    yolo_result.append(curr_img_detections)
-            else:
-                yolo_result = yolo_model.predict(images, imgsz=1600, conf=0.3, iou=0.1, max_det=20, verbose=False, augment=True)
-                yolo_result = [(r.boxes.xyxyn.tolist(), r.boxes.conf.tolist()) for r in yolo_result]  # WBF need normalized xyxy
-                yolo_result = [tuple(zip(*r)) for r in yolo_result]  # list of tuple[box, conf] in each image
+                    # print("Curr detections:", curr_img_detections)
 
+                yolo_result.append(curr_img_detections)
             yolo_results.append(yolo_result)
-
-        wbf_boxes = []
-        for i, img in enumerate(images):
-            boxes_list = []
-            scores_list = []
-            labels_list = []
-            for yolo_result in yolo_results:
-                yolo_result[i] = yolo_result[i].tolist()
-                boxes_list.append([r[:4] for r in yolo_result[i]])
-                scores_list.append([r[4] for r in yolo_result[i]])
-                labels_list.append([0] * len(yolo_result[i]))
-            boxes, scores, labels = weighted_boxes_fusion(
-                boxes_list, scores_list, labels_list,
-                weights=self.yolo_wbf_weights,
-                iou_thr=0.5,
-                skip_box_thr=0.0001
-            )
-            boxes = boxes.tolist()
-            # normalize
-            w, h = img.size
-            boxes = [[x1 * w, y1 * h, x2 * w, y2 * h] for x1, y1, x2, y2 in boxes]
-            wbf_boxes.append(boxes)
-        assert len(wbf_boxes) == len(images)  # shld be == bs
 
         # crop the boxes out
         cropped_boxes = []
-        for im, boxes in zip(images, wbf_boxes):
+        for im, boxes in zip(images, yolo_results[0]):
             im_boxes = []
-            for x1, y1, x2, y2 in boxes:
-                cropped = im.crop((x1, y1, x2, y2))
+            for *xyxy, conf in boxes:
+                cropped = im.crop(xyxy)
                 cropped = np.asarray(cropped)
                 if not any(s <= 10 for s in cropped.shape[:2]):
                     cropped = self.upscaler_pad10.enhance(cropped, outscale=4)[0]
@@ -360,6 +277,7 @@ class VLMManager:
         with torch.no_grad():
             for boxes, im_captions in zip(cropped_boxes, captions_list):
                 boxes = [img.resize((dim + 1 for dim in img.size), resample=Image.LANCZOS) if any(i == 1 for i in img.size) else img for img in boxes]  # fix bug in HF preprocessing where it wrongly takes any dim with 1 as channel(grayscale) when it could be h/w
+                # print("Boxes:", boxes)
                 if self.siglip_trt:
                     im_captions_templated = [f'This is a photo of {caption}.' for caption in im_captions]  # prompt template used in HF pipeline
                     vision_input = self.clip_image_processor(images=boxes, return_tensors='pt').to(self.device)
@@ -384,14 +302,16 @@ class VLMManager:
 
         bboxes = []
         # combine the results
-        for caption, yolo_box, similarity_scores in zip(captions, wbf_boxes, clip_results):
+        for caption, yolo_box, similarity_scores in zip(captions, yolo_results[0], clip_results):
             try:
                 box_idx = np.argmax(similarity_scores[caption])
-                x1, y1, x2, y2 = yolo_box[box_idx]
+                x1, y1, x2, y2, conf = yolo_box[box_idx]
                 # convert to ltwh
                 bboxes.append([x1, y1, x2 - x1, y2 - y1])
-            except:  # TODO: yolov9 filtering
+            except Exception as ex:  # TODO: yolov9 filtering
                 bboxes.append([300, 300, 50, 50])
+                print(caption, yolo_box, similarity_scores)
+                raise ex
 
         logging.info(f'Captions:\n{captions}\nBoxes:\n{bboxes}')
 
