@@ -7,7 +7,18 @@ from VLMManager import VLMManager
 app = FastAPI()
 
 vlm_manager = VLMManager(
-    yolo_paths=['29_ckpt_yolov6l6_blind.pt', '35_ckpt_yolov6l6_blind_run2.pt'],
+    yolo_paths=[
+        '29_ckpt_yolov6l6_blind.pt',
+        '35_ckpt_yolov6l6_blind_run2.pt',
+    ],
+    
+    # Ignored if non-YOLOv6 or non-SAHI.
+    # If SAHI but not YOLOv6, set same path as in yolo_paths.
+    sliced_yolo_paths=[
+        '30_ckpt_yolov6l6_sliced_blind_dstaxs7444.pt',
+        '30_ckpt_yolov6l6_sliced_blind_dstaxs7444.pt',
+    ],
+
     clip_path='siglip-large-patch16-384-ft',
     upscaler_path='realesr-general-x4v3.pth',
     use_sahi=[True, True],

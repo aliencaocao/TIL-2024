@@ -14,6 +14,7 @@ vlm/multistage/yolov8/runs/*
 vlm/multistage/runs/*
 vlm/multistage/siglip/til_siglip_ds*
 vlm/multistage/siglip/XS*
+vlm/multistage/multistage-venv/
 vlm/images_augmented/
 vlm/owlv2-large-patch14-ensemble
 !vlm/multistage/siglip/til_siglip_*.json
