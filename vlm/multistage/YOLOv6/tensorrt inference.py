@@ -4,7 +4,7 @@ from pstats import Stats
 import numpy as np
 import torch
 from PIL import Image
-from torch2trt import TRTModule
+from torch2trt import TRTModule, torch2trt
 
 from yolov6.core.inferer import Inferer
 from yolov6.data.data_augment import letterbox
@@ -45,11 +45,15 @@ def process_image(img, img_size, stride, half):
 
 
 device = torch.device('cuda')
-curr_model = DetectBackend('29_ckpt_yolov6l6_blind.pt', device=device)
+curr_model = DetectBackend('../29_ckpt_yolov6l6_blind.pt', device=device)
 model = curr_model.model.half().eval()
 
-# model_trt = torch2trt(model, [dummy], output_names=['outputs'], fp16_mode=True, min_shapes=[(1, 3, 896, 1536)], opt_shapes=[(1, 3, 896, 1536)], max_shapes=[(1, 3, 896, 1536)], use_onnx=True)
-# torch.save(model_trt.state_dict(), '29_ckpt_yolov6l6_blind_trt.pth')
+dummy = torch.ones(1, 3, 896, 1536, dtype=torch.float16, device=device)
+model_trt = torch2trt(model, [dummy], output_names=['outputs'], fp16_mode=True, min_shapes=[(1, 3, 896, 1536)], opt_shapes=[(1, 3, 896, 1536)], max_shapes=[(1, 3, 896, 1536)], use_onnx=True)
+with open("../29_ckpt_yolov6l6_blind.engine", 'wb') as f:
+    f.write(model_trt.engine.serialize())
+torch.save(model_trt.state_dict(), '../29_ckpt_yolov6l6_blind_trt.pth')
+
 model_trt = TRTModule()
 model_trt.load_state_dict(torch.load('29_ckpt_yolov6l6_blind_trt.pth'))
 model_trt.output_flattener._schema = model_trt.output_flattener._schema[:1]
@@ -62,7 +66,6 @@ for i in range(50):
     image, img_src = process_image(img=image, img_size=img_size, stride=32, half=True)
     image = image.unsqueeze(0).to(device)
 
-    # dummy = torch.ones(1, 3, 896, 1536, dtype=torch.float16, device=device)
 
     # y = model(image)[0]
     y_trt = model_trt(image)[0]
