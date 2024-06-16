@@ -78,56 +78,21 @@ Parakeet RNNT 0.6B gave a much worse leaderboard score despite a ~10x lower vali
 
 ### Training
 
-We used the following configuration to train our whisper models: 
+Hyperparameters:
 
-```python
-training_args = Seq2SeqTrainingArguments(
-    output_dir="<output_directory>",
-    overwrite_output_dir =True,
-    per_device_train_batch_size=8,
-    gradient_accumulation_steps=1,
-    learning_rate=1e-5, # was 1e-4
-    warmup_steps=500,
-    num_train_epochs=30,
-    gradient_checkpointing=True,
-    fp16=True,
-    torch_compile=True,
-    fp16_full_eval=True,
-    evaluation_strategy="epoch",
-    save_strategy='epoch',
-    per_device_eval_batch_size=2,
-    predict_with_generate=True,
-    generation_max_length=225,
-    save_steps=1000,
-    eval_steps=1000,
-    logging_steps=25,
-    report_to=["tensorboard"],
-    load_best_model_at_end=True,
-    metric_for_best_model="wer",
-    greater_is_better=False,
-    save_total_limit = 3,
-    adam_beta1=0.9,
-    adam_beta2=0.98,  # follow fairseq finetuning config
-    warmup_ratio=0.22, # follow Ranger21
-    weight_decay=1e-4,
-    dataloader_num_workers=psutil.cpu_count(logical=True)
-)
-```
-
-#### Notable Configs
-
-`warmup_steps`\
-By gradually increasing the learning rate at the beginning of training, warmup steps help to prevent instability and divergence, leading to more efficient and effective training of neural network models.
-
-`torch_compile=True`\
-Which makes PyTorch code run faster by JIT-compiling PyTorch code into optimized kernels. While this may
-
-`dataloader_num_workers=psutil.cpu_count(logical=True)`\
-As mentioned in this [blog](https://discuss.huggingface.co/t/help-needed-with-issues-while-trying-fine-tune-whisper/40248/2), optimising the number of dataloaders helps to feed the GPU more effectively.
+* Learning Rate: 1e-5
+* warmup: 500 steps
+* epochs: 30
+* adam_beta1: 0.9
+* adam_beta2: 0.98
+* warmup_ratio: 0.22
+* weight_decay: 1e-4
 
 
 ### Inference
-To speed up inference using whisper models, we decided to use [faster-whisper](https://github.com/SYSTRAN/faster-whisper), which utilises the ctranslate2, a fast inference engine for Transformer models, to increase the inference speeds by more than 2x.
+To speed up inference using whisper models, we decided to use [`faster-whisper`](https://github.com/SYSTRAN/faster-whisper), which utilises the ctranslate2, a fast inference engine for Transformer models, to increase the inference speeds by more than 2x.
+
+We also tried applying loudness normalisation to the audio clips before inference to increase accuracy score, and this was done using the [`pyloudnorm`](https://github.com/csteinmetz1/pyloudnorm) library. However, this loudness normalisation seemed to have no noticeable effect on our scores, but significantly slowed down model inference. This led us to conclude that our ASR models, namely whisper small and whisper medium, are already significantly robust to audio clips of varying loudness. This can also be seen in the physical competition where the raw whisper models were able to transcribe even the softess of clips in the advanced final round. Hence we decided to scrap the idea.
 
 ## NLP
 The task is to convert instructions on operating a turret into structured data with the following fields: heading (a 3-digit number), tool (the weapon to use), target (description of the target's color and type).
