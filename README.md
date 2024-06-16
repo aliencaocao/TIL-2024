@@ -24,7 +24,7 @@ Unfortunately our model may have overfitted to leaderboard hidden test set in Fi
 ## Final evaluation results on leaderboard
 | Task | Model                                                 | Accuracy Score     |
 |------|-------------------------------------------------------|--------------------|
-| ASR  | Whisper Medium En                                     | 0.9956923723471317 |
+| ASR  | Whisper Medium                                        | 0.9956923723471317 |
 | NLP  | gorilla-openfunctions-v2                              | 0.99933333         |
 | VLM  | YOLOv6l6 + RealESRGAN-x4v3 + SigLIP-large-patch16-384 | 0.913              |
 We do not report speed score here as it is not optimal in leaderboard submission since we employed hardware-specific optimizations. More details will be below.
@@ -69,6 +69,11 @@ Attenuates the low and high frequencies of an audio clip, which can help to simu
 | Whisper Small        | DSTA set (Augs)                                       | 0.9940            |
 | Whisper Small        | DSTA set + XS set                                     | 0.9922            |
 | Whisper Small (niner)| DSTA set + XS set                                     | 0.9926            |
+| Whisper Medium       | DSTA set (Augs)                                       | 0.9957            |
+| Parakeet RNNT 0.6B   | DSTA set (Augs)                                       | 0.9687            |
+| Parakeet RNNT 0.6B   | DSTA set + XS set (Augs)                              | 0.9893            |
+
+Parakeet RNNT 0.6B gave a much worse leaderboard score despite a ~10x lower validation word error rate during training. Perhaps, Whisper has supreme robustness due to being trained on 680k hours of labelled data versus Parakeet's 64k hours.
 
 ### Training
 
