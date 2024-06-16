@@ -27,6 +27,7 @@ Unfortunately our model may have overfitted to leaderboard hidden test set in Fi
 | ASR  | Whisper Medium                                        | 0.9956923723471317 |
 | NLP  | gorilla-openfunctions-v2                              | 0.99933333         |
 | VLM  | YOLOv6l6 + RealESRGAN-x4v3 + SigLIP-large-patch16-384 | 0.913              |
+
 We do not report speed score here as it is not optimal in leaderboard submission since we employed hardware-specific optimizations. More details will be below.
 
 ## ASR
@@ -63,15 +64,15 @@ Attenuates the low and high frequencies of an audio clip, which can help to simu
 
 ### Model
 
-| Model                | Train Set                                             | Leaderboard Score |
-|----------------------|-------------------------------------------------------|-------------------|
-| Whisper Small        | DSTA set                                              | 0.9935            |
-| Whisper Small        | DSTA set (Augs)                                       | 0.9940            |
-| Whisper Small        | DSTA set + XS set                                     | 0.9922            |
-| Whisper Small (niner)| DSTA set + XS set                                     | 0.9926            |
-| Whisper Medium       | DSTA set (Augs)                                       | 0.9957            |
-| Parakeet RNNT 0.6B   | DSTA set (Augs)                                       | 0.9687            |
-| Parakeet RNNT 0.6B   | DSTA set + XS set (Augs)                              | 0.9893            |
+| Model                 | Train Set                | Leaderboard Score |
+|-----------------------|--------------------------|-------------------|
+| Whisper Small         | DSTA set                 | 0.9935            |
+| Whisper Small         | DSTA set (Augs)          | 0.9940            |
+| Whisper Small         | DSTA set + XS set        | 0.9922            |
+| Whisper Small (niner) | DSTA set + XS set        | 0.9926            |
+| Whisper Medium        | DSTA set (Augs)          | 0.9957            |
+| Parakeet RNNT 0.6B    | DSTA set (Augs)          | 0.9687            |
+| Parakeet RNNT 0.6B    | DSTA set + XS set (Augs) | 0.9893            |
 
 Parakeet RNNT 0.6B gave a much worse leaderboard score despite a ~10x lower validation word error rate during training. Perhaps, Whisper has supreme robustness due to being trained on 680k hours of labelled data versus Parakeet's 64k hours.
 
@@ -126,42 +127,7 @@ As mentioned in this [blog](https://discuss.huggingface.co/t/help-needed-with-is
 
 
 ### Inference
-
 To speed up inference using whisper models, we decided to use [faster-whisper](https://github.com/SYSTRAN/faster-whisper), which utilises the ctranslate2, a fast inference engine for Transformer models, to increase the inference speeds by more than 2x.
-
-#### Model Conversion
-```python
-from faster_whisper import WhisperModel
-from ctranslate2.converters import TransformersConverter
-
-processor = WhisperProcessor.from_pretrained('<your-whisper-model>',resume_download = None)
-processor.tokenizer.save_pretrained(weights)
-processor.feature_extractor.save_pretrained(weights)
-
-outputDir = "<output-directory>"
-ModelConverter = TransformersConverter(weights)
-modelPath = ModelConverter.convert(
-    outputDir,
-    force = True
-)
-```
-
-#### Running inference using faster-whisper
-
-```python
-import librosa
-filename = "<your-wav-file>" 
-
-frequency = 16000
-waveform, sr = librosa.load(filename, sr = frequency)
-
-weights = "<your-model-weights>"
-model = WhisperModel(weights, device = "cuda", compute_type="float16")
-
-segments, info = model.transcribe(waveform, beam_size=5)
-for segment in segments:
-    print("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
-```
 
 ## NLP
 The task is to convert instructions on operating a turret into structured data with the following fields: heading (a 3-digit number), tool (the weapon to use), target (description of the target's color and type).
