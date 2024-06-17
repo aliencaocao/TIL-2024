@@ -186,7 +186,7 @@ This task is on using description of a flying object to locate it in an image. W
 
 Details can be found [here](vlm/README.md)
 
-We only document in detail the multi-stage approach that we used eventually here.
+We only document in detail the multi-stage approach that we used eventually. The full evaluation results and comments are [here](vlm/multistage/README.md). The writeup below is a summary.
 
 Our pipeline:
 1. YOLOv6-L6 trained on single-class detection of targets in general, using synthetic data too
@@ -240,6 +240,8 @@ T = [
 ```
 This is V2 of the augmentations. Evaluation of V1 can be found [here](vlm/multistage/README.md).
 
+We also train SigLIP on upscaled data as it is shown to have great accuracy benefits, but reduced robustness to false positive bboxes. Over all, it is still by far a worthy trade-off.
+
 ### Synthetic Data
 We generated synthetic data for VLM task by cropping and pasting flying objects from online onto random images, and resizing them and add augmentations.
 
@@ -268,8 +270,6 @@ Effect of upscaling:
 ![img.png](img.png)
 
 Interestingly, upscaling has always been worse on local clean validations set, likely due to the image not being noisy and the upscaling artifacts are not learned by the model trained on non-upscaled data.
-
-More evaluation results and analysis on different models can be found [here](vlm/multistage/README.md).
 
 #### SigLIP
 We extensively compared OpenAI CLIPs, LAION CLIPs, EVA-CLIPs, Metaclips and Google SigLIPs, SigLIP clearly stands out as the winner as:
@@ -328,11 +328,29 @@ loss = nll.mean()
 ```
 For ease of use, our modified `modeling_siglip.py` can be found [here](vlm/multistage/siglip/modeling_siglip.py) as our training script imports it locally. A PR has been made to transformers too.
 
+Here is a summarized abaltion study for SigLIP:
+* Qualifier end: 0.864 (5 epoch on original data)
+* Continued for 5 more epoch: 0.874
+* Inference on upscaled boxes: 0.881
+* Train & inference on upscaled boxes: 0.899
+* Trained on DSTA+synthetic: 0.91 → 0.913
+
+Hyperparameters:
+* Learning rate: 2e-5 (tried higher but it is much worse)
+* Warmup: 10%
+* Weight decay: 1e-4 (tried 0 following SigLIP paper's finetune recommendations but performs worse)
+* Effective batch size: 960 (tried smaller but it is much worse, confirming various contrastive learning paper's observation that generally cranking up batch size is a free gain. SigLIP paper used sigmoid to use 1M BS!)
+* AdamW beta1: 0.9
+* AdamW beta2: 0.99 (reduced from default 0.999 to increase stability at higher BS as recommended by SigLIP paper)
+* Epochs: 5 or 10 (see below)
+* LR schedule: cosine annealing decay
+* Optimizer: AdamW Fused
+
+Training was done in full BF16 with `torch.compile` which speeds up training by 30% at cost of a 4 minute compile time.
+
 SigLIP training code can be found in [HF_train.py](vlm/multistage/siglip/HF_train.py).
 
-We used Weights & Biases for logging as each training run was done remotely on a node.
-
-SigLIP training logs on Weights & Biases: https://wandb.ai/aliencaocao/TIL2024-SigLIP
+We used Weights & Biases for logging: https://wandb.ai/aliencaocao/TIL2024-SigLIP
 
 Qualifiers and semi-finals submission model is https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/3c00nigo which is resumed from https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/os657bxe. This is trained for 5epochs then continued for another 5 epochs (effectively 2 cycles of cosine annealing schedule) on full DSTA data. It scored 0.905 with YOLOv9e w/ SAHI and 0.91 with 2xYOLOv6l6 WBF. Weights: https://huggingface.co/aliencaocao/siglip-large-epoch5-augv2-upscale_0.892_cont_5ep_0.905-TIL24
 
