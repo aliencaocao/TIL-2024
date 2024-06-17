@@ -47,32 +47,18 @@ Several combinations of augmentations were tried. We eventually settled on the f
 augment = Compose([
     HighShelfFilter(max_gain_db=6.0, p=0.3),
     LowShelfFilter(max_gain_db=6.0, p=0.3),
+
+    # Limit rate to [0.9, 1.1] so audio remains recognizable
     TimeStretch(min_rate=0.9, max_rate=1.1, p=0.2),
-    BandPassFilter(p=0.3)
+
+    # Simulate radio transmission where a limited range of frequencies can be broadcast
+    BandPassFilter(p=0.3),
 ])
 ```
 
-It is somewhat worth noting that we employed the exact same augmentation pipeline in TIL 2023.
+"niner" is a special token that exists in this competition's data due to the convention of radio transmission. We tried adding it as an extra token to the tokenizer. There are marginal gains but it introduced issues for faster-whisper deployment so we did not pursue it.
 
-#### [High Shelf Filter](https://iver56.github.io/audiomentations/waveform_transforms/high_shelf_filter/)
-
-Attenuates or boosts the higher end of frequencies. We decided to boost the effect of higher frequencies by up to 6.0 decibels in our training data.
-
-#### [Low Shelf Filter](https://iver56.github.io/audiomentations/waveform_transforms/low_shelf_filter/)
-
-Attenuates or boosts the lower end of frequencies. We decided to boost the effect of lower frequencies by up to 6.0 decibels in our training data
-
-#### [Time Stretch](https://iver56.github.io/audiomentations/waveform_transforms/time_stretch/)
-
-Change the speed or duration of the signal without changing the pitch. We decided to limit the rate between 0.9 and 1.1 to avoid distortion of the audio clips beyond human recognition.
-
-#### [Band Pass Filter](https://iver56.github.io/audiomentations/waveform_transforms/band_pass_filter/)
-
-Attenuates the low and high frequencies of an audio clip, which can help to simulate radio transmission which only allows certain frequencies to be broadcasted.
-
-"niner" is a special token that only exists in this competition's data due to the convention of radio transmission. We tried adding it as an extra token to the tokenizer. There are marginal gains but it introduced issues for faster-whisper deployment so we did not pursue.
-
-### Model
+### Models
 
 | Model                 | Train Set                  | Leaderboard Score |
 |-----------------------|----------------------------|-------------------|
@@ -90,9 +76,9 @@ More evaluation results can be found [here](asr/README.md).
 
 ### Training
 Hyperparameters:
-* Learning Rate: 1e-5
-* warmup: 500 steps
-* epochs: 30
+* Learning rate: 1e-5
+* Warmup: 500 steps
+* Epochs: 30
 * adam_beta1: 0.9
 * adam_beta2: 0.98
 * warmup_ratio: 0.22
@@ -102,7 +88,7 @@ Training code can be found in [WhisperSmallAndMed.ipynb](asr/whisper-src/Whisper
 
 
 ### Inference
-To speed up inference using whisper models, we decided to use [`faster-whisper`](https://github.com/SYSTRAN/faster-whisper), which utilises the ctranslate2, a fast inference engine for Transformer models, to increase the inference speeds by more than 2x.
+To speed up inference using Whisper models, we used [`faster-whisper`](https://github.com/SYSTRAN/faster-whisper). It utilises `ctranslate2`, a fast inference engine for Transformer models, to increase inference speeds by more than 2x.
 
 We also tried applying loudness normalisation to the audio clips before inference to increase accuracy score, and this was done using the [`pyloudnorm`](https://github.com/csteinmetz1/pyloudnorm) library. However, this loudness normalisation seemed to have no noticeable effect on our scores, but significantly slowed down model inference. This led us to conclude that our ASR models, namely Whisper Small and Medium, are already significantly robust to audio clips of varying loudness. This can also be seen in the physical competition where the raw whisper models were able to transcribe even the softest of clips in the advanced final round. 
 
