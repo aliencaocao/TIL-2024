@@ -1,5 +1,45 @@
 # DSTA BrainHack TIL-AI 2024 - Team 12000SGDPLUSHIE
 
+<!-- TOC -->
+* [Introduction](#introduction)
+* [Team Members (in alphabetical order)](#team-members-in-alphabetical-order)
+* [Achievements](#achievements)
+* [Final evaluation results](#final-evaluation-results)
+* [ASR](#asr)
+  * [Data Augmentation](#data-augmentation)
+  * [Models](#models)
+  * [Training](#training)
+  * [Inference](#inference)
+* [NLP](#nlp)
+  * [Data Transformation](#data-transformation)
+  * [Model](#model)
+  * [Training](#training-1)
+    * [Hyperparameters:](#hyperparameters)
+  * [Inference](#inference-1)
+* [VLM](#vlm)
+  * [Overview](#overview)
+  * [Data Augmentation](#data-augmentation-1)
+    * [YOLO](#yolo)
+    * [SigLIP](#siglip)
+  * [Synthetic Data](#synthetic-data)
+  * [Models](#models-1)
+    * [Object Detectors](#object-detectors)
+    * [Upscalers](#upscalers)
+    * [SigLIP](#siglip-1)
+  * [Training](#training-2)
+    * [YOLOv9e](#yolov9e)
+    * [YOLOv6-L6](#yolov6-l6)
+    * [SigLIP](#siglip-2)
+  * [Inference](#inference-2)
+    * [YOLOv9e](#yolov9e-1)
+    * [Slicing Aided Hyper Inference (SAHI)](#slicing-aided-hyper-inference-sahi)
+    * [YOLOv6l6](#yolov6l6)
+    * [Real-ESRGAN-x4v3](#real-esrgan-x4v3)
+    * [SigLIP](#siglip-3)
+  * [Hardware used](#hardware-used)
+* [Final words](#final-words)
+<!-- TOC -->
+
 ## Introduction
 TIL-AI 2024 comprised 3 tasks:
 * **Automatic speech recognition (ASR)** \
@@ -411,10 +451,10 @@ We thank our [generous senior](https://github.com/152334H) as most of our models
 We also made use of Kaggle's free 2xT4 and TPUv4-8 pod for training.
 
 ## Final words
-We like to thank [Ryan](https://github.com/ryan-tribex) for his hardware and support during the competition, as well as DSTA for organizing this yearly ML event. Although we kind of trolled ourselves in finals, we still believe in the work and effort we have done, and that our learnings and findings are valuable, and attribute our failure to just luck (coping).
+We like to thank [Ryan](https://github.com/ryan-tribex) for his hardwork SOLOing the tech side of the competition and support during the competition, as well as DSTA for organizing the largest yearly ML competition in Singapore. Although we kind of trolled ourselves in finals, we still believe in the work and effort we have done, and that our learnings and findings are valuable, and attribute our failure to just luck (coping).
 
 As four-year TIL participants, we are glad to see it gains so much traction in 2024 and our previous works ([TIL-2023](https://github.com/aliencaocao/TIL-2023), [TIL-2022](https://github.com/aliencaocao/TIL-2022)) has helped and inspired not only ML beginners but also the organizer himself (Ryan).
 
 For any questions please open a Discussion.
 
-Please email aliencaocao@gmail.com for weights.
+Please email aliencaocao@gmail.com for unreleased weights.
