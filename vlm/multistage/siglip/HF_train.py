@@ -10,8 +10,6 @@ from torchvision.io import ImageReadMode, read_image
 from transformers import (
     Trainer,
     TrainingArguments,
-    AutoTokenizer,
-    AutoImageProcessor,
     AutoProcessor,
     EvalPrediction
 )
@@ -168,7 +166,7 @@ training_args = TrainingArguments(
     # metric_for_best_model='F1',
     # greater_is_better=True,
     optim='adamw_torch_fused',
-    # resume_from_checkpoint=pretrained_model_path,
+    resume_from_checkpoint=pretrained_model_path,
     report_to='wandb',
     run_name="siglip-large-augv2-10ep",
     gradient_checkpointing=False,

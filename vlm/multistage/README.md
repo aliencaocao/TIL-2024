@@ -101,12 +101,11 @@ T = [
 1. Copy modeling_siglip.py from https://github.com/huggingface/transformers/blob/bdb9106f247fca48a71eb384be25dbbd29b065a8/src/transformers/models/siglip/modeling_siglip.py
 2. Add loss func adapted from JAX in https://github.com/google-research/big_vision/blob/01edb81a4716f93a48be43b3a4af14e29cdb3a7f/big_vision/trainers/proj/image_text/siglip.py#L287 to https://github.com/huggingface/transformers/blob/bdb9106f247fca48a71eb384be25dbbd29b065a8/src/transformers/models/siglip/modeling_siglip.py#L1230
 ```python
-if return_loss:
-    eye = torch.eye(logits_per_text.size(0), device=logits_per_text.device)
-    m1_diag1 = -torch.ones_like(logits_per_text) + 2 * eye
-    loglik = torch.nn.functional.logsigmoid(m1_diag1 * logits_per_text)
-    nll = -torch.sum(loglik, dim=-1)
-    loss = nll.mean()
+eye = torch.eye(logits_per_text.size(0), device=logits_per_text.device)
+m1_diag1 = -torch.ones_like(logits_per_text) + 2 * eye
+loglik = torch.nn.functional.logsigmoid(m1_diag1 * logits_per_text)
+nll = -torch.sum(loglik, dim=-1)
+loss = nll.mean()
 ```
 3. Multi-GPU training using FDSP:
 ```shell

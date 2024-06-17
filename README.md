@@ -328,15 +328,29 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4 python -m torch.distributed.launch \
 To improve compute efficiency, we used rectangular training by setting input to 1520x870, same as DSTA training data and test data. Note that it will be upscaled to 1536x896 due to it must be divisible by strides=32.
 
 #### SigLIP
+HF transformers does not support training SigLIP yet but it is simply due to missing loss function. We adapted it from [JAX implementation](https://github.com/google-research/big_vision/blob/01edb81a4716f93a48be43b3a4af14e29cdb3a7f/big_vision/trainers/proj/image_text/siglip.py#L287) to [transformers](https://github.com/huggingface/transformers/blob/bdb9106f247fca48a71eb384be25dbbd29b065a8/src/transformers/models/siglip/modeling_siglip.py#L1230):
+```python
+eye = torch.eye(logits_per_text.size(0), device=logits_per_text.device)
+m1_diag1 = -torch.ones_like(logits_per_text) + 2 * eye
+loglik = torch.nn.functional.logsigmoid(m1_diag1 * logits_per_text)
+nll = -torch.sum(loglik, dim=-1)
+loss = nll.mean()
+```
+For ease of use, our modified `modeling_siglip.py` can be found [here](vlm/multistage/siglip/modeling_siglip.py) as our training script imports it locally. A PR has been made to transformers too.
 
 SigLIP training code can be found in [HF_train.py](vlm/multistage/siglip/HF_train.py).
+
+We used Weights & Biases for logging as each training run was done remotely on a node.
 
 SigLIP training logs on Weights & Biases: https://wandb.ai/aliencaocao/TIL2024-SigLIP
 
 Semi-finals submission model is https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/3c00nigo which is resumed from https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/os657bxe
 
-Finals submission model is https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/ffkw9nka
+Finals submission/best score model is https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/ffkw9nka
 
+Due to a [bug](https://github.com/huggingface/transformers/issues/31034) with HuggingFace Accelerate/FDSP, we had to save the checkpoint only once and thus set `save_steps` to 0.999.
+
+Due to a mysterious issue, we constantly CUDA OOMed when running validation, possibility due to a VRAM leak. Thus we had to disable validation and rely soley on leaderboard score for iterating.
 
 ### Inference
 #### YOLOv9e
@@ -387,3 +401,12 @@ For our entire pipeline, the end2end time taken to process 1 sample at bs=1 is 0
 We thank our [generous senior](https://github.com/152334H) as most of our models are trained on a 5xRTX 3090 node owned by him.
 
 We also made use of Kaggle's free 2xT4 and TPUv4-8 pod for training.
+
+## Final words
+We like to thank [Ryan](https://github.com/ryan-tribex) for his hardware and support during the competition, as well as DSTA for organizing this yearly ML event. Although we kind of trolled ourselves in finals, we still believe in the work and effort we have done, and that our learnings and findings are valuable, and attribute our failure to just luck (coping).
+
+As four-year TIL participants, we are glad to see it gains so much traction in 2024 and our previous works ([TIL-2023](https://github.com/aliencaocao/TIL-2023), [TIL-2022](https://github.com/aliencaocao/TIL-2022)) has helped and inspired not only ML beginners but also the organizer himself (Ryan).
+
+For any questions please open a Discussion.
+
+Please email aliencaocao@gmail.com for weights.
