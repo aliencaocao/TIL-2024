@@ -175,11 +175,79 @@ Inference code can be found in [NLPManager.py](nlp/src/NLPManager.py).
 
 
 ## VLM
+This task is on using description of a flying object to locate it in an image. We tried multiple approaches:
+* MM-Grounding-DINO: trained model giving 0.509 map (we got scammed)
+* Co-Det: 0.61 map zero-shot but too slow to train
+* OWLv2-large-ensemble: 0.629 map zero-shot BUT training on both own-implemented PyTorch code and Google’s Official JAX code lead to loss explosion
+* A few that inference could not run / already very bad on training data
+  * APE (RAM OOM)
+  * UNINEXT
+  * ONE-PEACE
+  * OFA
+  * GLEE-Pro
+  * PolyFormer
+  * HIPIE
+  * LLaVA 1.6 (LLaMA-3 8B) w/ prompting
+  * Phi3-vision w/ prompting
+
+Details can be found [here](vlm/README.md)
+
+We only document in detail the multi-stage approach that we used eventually here.
+### Overview
+1. YOLOv6l6 trained on single-class detection of targets in general, using synthetic data too
+2. Extract the bboxes as detected by YOLO, optionally using SAHI (Slicing Aided Hyper Inference), helped for v9e but not v6l6
+3. Run each extracted bbox through Real-ESRGAN x4v3 model to upscale 4x
+4. Feed each bbox into a SigLIP and get similarity score VS caption (1/image)
+5. Choose the box with the highest similarity score for each caption
+
 ### Data Augmentation
+#### YOLO
+We used the following augmentations for YOLOv9e and YOLOv6l6 training:
+```python
+T = [
+    A.GaussNoise(var_limit=2500, p=0.5),
+    A.ISONoise(p=0.5),
+    A.Flip(p=0.5),
+    A.Blur(p=0.1),
+    A.MedianBlur(p=0.1),
+    A.ToGray(p=0.1),
+    A.CLAHE(p=0.1),
+    A.RandomBrightnessContrast(p=0.5),
+    A.RandomGamma(p=0.2),
+    A.ImageCompression(quality_lower=75, p=0.5),
+]
+```
+This is V3 of the augmentations. Evaluation of previous 2 versions can be found [here](vlm/multistage/README.md).
+
+Note for YOLOv9e, we had to modify the [source](https://github.com/ultralytics/ultralytics/blob/c8514a6754d22a331e600ea9236340d40477b8a5/ultralytics/data/augment.py#L928) of Ultralytics directly to modify its augmentations.
+
+TODO: @wingyip fill for yolov6l6 on how augs are defined, add the config files in repo
+
+#### SigLIP
+We used the following augmentations for SigLIP training:
+```python
+T = [
+    A.Resize(image_size, image_size, interpolation=cv2.INTER_LANCZOS4),
+    A.GaussNoise(var_limit=(500, 5000), p=1.0, per_channel=True),
+    A.ISONoise(p=1.0, color_shift=(0.02, 0.07)),
+    A.MultiplicativeNoise(p=1.0),
+    A.AdvancedBlur(blur_limit=(3, 11), p=0.3),
+    A.Flip(p=0.5),
+    A.RandomRotate90(p=0.5),
+    A.CLAHE(p=0.2),
+    A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.5, p=0.5),
+    A.RandomGamma(p=0.2),
+    A.Perspective(p=0.5),
+    A.ImageCompression(quality_range=(25, 75), p=0.8),
+    A.Normalize(mean=mean, std=std),
+    ToTensorV2()
+]
+```
+This is V2 of the augmentations. Evaluation of V1 can be found [here](vlm/multistage/README.md).
 
 ### Model
 
-More multistage approach evaluation results can be found [here](vlm/multistage/README.md).
+More evaluation results and analysis can be found [here](vlm/multistage/README.md).
 
 ### Training
 #### YOLOv8

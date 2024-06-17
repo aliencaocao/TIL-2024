@@ -146,7 +146,7 @@ TFDS_DATA_DIR=/kaggle/input/til-siglip-tfds BV_JAX_INIT=1 python3 -m big_vision.
 2. SigLIP on the other hand, uses Sigmoid as loss, which operates on a one-to-one caption-image pair. This means the model is more suited for the task at hand, despite a smaller scale than H variants.
 - Isolate the 2 tasks and evaluate separately on leaderboard: use pretrained SigLIP and iterate on YOLO until max, then turn to SigLIP.
 - Large BS works a lot better for SigLIP as mentioned by many contrastive loss papers, due to the need for more negative samples in a batch.
-- Iterating: train up to 5 epoch to validate helpfulness of change in hyperparams/augs then full train overnight\
+- Iterating: train up to 5 epoch to validate helpfulness of change in hyperparams/augs then full train overnight
 - 5 epoch proved enough for upscaled training data, 10epoch overfits.
 
 
