@@ -1,11 +1,15 @@
-# DSTA BrainHack TIL-AI 2024
-
-## Team 12000SGDPLUSHIE
+# DSTA BrainHack TIL-AI 2024 - Team 12000SGDPLUSHIE
 
 ## Introduction
-TIL-AI 2024 has 3 tasks: Automatic Speech Recognition (ASR), Natural Language Processing (NLP) and Visual Language Modeling (VLM).
+TIL-AI 2024 comprised 3 tasks:
+* **Automatic speech recognition (ASR)** \
+    Convert radio-distorted and noisy audio into text.
+* **Natural language processing (NLP)** \
+    Convert text into structured data for controlling a turret.
+* **Vision-language modelling (VLM)** \
+    Locate a flying object in an image based on a textual description of its appearance.
 
-ASR task is to convert radio-distorted and noisy audio into text. NLP task is to convert text into structured data for controlling a turrent. VLM is to locate a flying object in an image based on its description. The three tasks chains up in Finals to drive a DJI Robomaster's turrent in an simulated environment.
+The three tasks were chained in the Finals to drive a DJI Robomaster's turret in a simulated environment.
 
 ## Team Members (in alphabetical order)
 * [Billy Cao](https://github.com/aliencaocao) (L): NLP/VLM
@@ -21,23 +25,23 @@ ASR task is to convert radio-distorted and noisy audio into text. NLP task is to
 
 We hypothesise that our poor Finals performance was because we overfitted our VLM to the Qualifiers test set - i.e. we chose our checkpoints and made optimisations based almost solely on Qualifiers performance. It is likely that beyond some lower bound, increases in accuracy - even validation/test accuracy - become unrepresentative of model performance and robustness in the wild. (This was observed during our training process for the SOLIDER-REID modelin TIL 2023.)
 
-## Final evaluation results on leaderboard
-| Task | Model                                                  | Accuracy Score     |
-|------|--------------------------------------------------------|--------------------|
-| ASR  | Whisper Medium                                         | 0.9956923723471317 |
-| NLP  | gorilla-openfunctions-v2                               | 0.99933333         |
-| VLM  | YOLOv6-L6 + RealESRGAN-x4v3 + SigLIP-large-patch16-384 | 0.913              |
+## Final evaluation results
+| Task | Model | Accuracy score |
+|-|-|-|
+| ASR | Whisper Medium | 0.9956923723471317 |
+| NLP | gorilla-openfunctions-v2 | 0.99933333 |
+| VLM | YOLOv6-L6 + RealESRGAN-x4v3 + SigLIP-large-patch16-384 | 0.913 |
 
-We do not report speed score here as it is not optimal in leaderboard submission since we employed hardware-specific optimizations. More details will be below.
+We do not report speed score here. Due to our use of hardware-specific TensorRT optimisation, it is unrepresentative of the actual speed of our models in the Finals.
 
 ## ASR
 ### Data Augmentation
 
-We tried introducing noise to the dataset, and train on the DSTA set with noise combined with that without noise. However, the model trained on denoised data was not performing very well, with an unexpected noticeable dip in accuracy. Hence, we scraped the idea of training on denoised data.
+We tried introducing noise to the dataset, then training on the DSTA dataset with added noise combined with that without noise. However, the model trained on denoised data was not performing very well, with an unexpected noticeable dip in accuracy. Hence, we scrapped the idea of training on denoised data.
 
-For ASR data augmentations, we decided to use the `audiomentations` library. We do note that the `torch-audiomentations` is also an alternative that better utilises the GPU. Nonetheless, the `audiomentations` library still offered us a wider variety of augmentations, allowing us to train our ASR models to be more robust to different types of noise.
+For ASR data augmentation, we used the `audiomentations` library. We note that `torch-audiomentations` is an alternative that performs augmentations on GPU for a speed boost. Nonetheless, its support for some augmentations is lacking as of June 2024, so we did not use it.
 
-Below is a set of augmentations that worked well for us initially:
+Several combinations of augmentations were tried. We eventually settled on the following:
 
 ```python
 augment = Compose([
@@ -47,6 +51,8 @@ augment = Compose([
     BandPassFilter(p=0.3)
 ])
 ```
+
+It is somewhat worth noting that we employed the exact same augmentation pipeline in TIL 2023.
 
 #### [High Shelf Filter](https://iver56.github.io/audiomentations/waveform_transforms/high_shelf_filter/)
 
@@ -98,7 +104,7 @@ Training code can be found in [WhisperSmallAndMed.ipynb](asr/whisper-src/Whisper
 ### Inference
 To speed up inference using whisper models, we decided to use [`faster-whisper`](https://github.com/SYSTRAN/faster-whisper), which utilises the ctranslate2, a fast inference engine for Transformer models, to increase the inference speeds by more than 2x.
 
-We also tried applying loudness normalisation to the audio clips before inference to increase accuracy score, and this was done using the [`pyloudnorm`](https://github.com/csteinmetz1/pyloudnorm) library. However, this loudness normalisation seemed to have no noticeable effect on our scores, but significantly slowed down model inference. This led us to conclude that our ASR models, namely Whisper-Small and -Medium, are already significantly robust to audio clips of varying loudness. This can also be seen in the physical competition where the raw whisper models were able to transcribe even the softest of clips in the advanced final round. 
+We also tried applying loudness normalisation to the audio clips before inference to increase accuracy score, and this was done using the [`pyloudnorm`](https://github.com/csteinmetz1/pyloudnorm) library. However, this loudness normalisation seemed to have no noticeable effect on our scores, but significantly slowed down model inference. This led us to conclude that our ASR models, namely Whisper Small and Medium, are already significantly robust to audio clips of varying loudness. This can also be seen in the physical competition where the raw whisper models were able to transcribe even the softest of clips in the advanced final round. 
 
 We also tried denoising the data prior to inference as another attempt to raise our accuracy from the whisper model. However, we noticed early on that denoising the audio clips on inference was doing a disservice to the whisper model. Denoising on inference caused our accuracy to take a hit, while the performance tanked due to the time required to process every input. This is also likely due to whisper being trained on 680k audio clips and being robust to noise. It is also possible that denoising the clips, introduced audio artifacting in some clips and causing inferences to fail.
 
