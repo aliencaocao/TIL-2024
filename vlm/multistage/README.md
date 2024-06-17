@@ -136,10 +136,10 @@ TFDS_DATA_DIR=/kaggle/input/til-siglip-tfds BV_JAX_INIT=1 python3 -m big_vision.
 
 
 ### Takeaways
-- Inferencing on YOLO with high res (1600px) brings noticible improvement even using weights trained on 640px. Further training on 1280px and then 1600px significantly improves. This is a clear characteristic of small object detection tasks.
+- Inferencing on YOLO with high res (1600px) brings noticeable improvement even using weights trained on 640px. Further training on 1280px and then 1600px significantly improves. This is a clear characteristic of small object detection tasks.
 - Val and test correlation on CLIPs are not reliable beyond 0.8 mAP due to lack of noisy val data
 - Upscaling is always bad on val even though they do result in a clearer segregation of scores in CLIPs. They do improve test scores. This is likely due to local testing samples are not noisy enough and benefit of upscaling is overweighed by the artifacts.
-- SAHI (slicing inference) on YOLO is not suitable for this task despite it being designed for small objects detection.
+- SAHI (slicing inference) on YOLO requires much higher confidence score (0.1 vs 0.5) to reduce FPs
 - Strong (var=2500) GaussianNoise augmentations significantly improve test performance of YOLO
 - Reason why CLIP-ViT-H and Metaclip-H etc. significantly **outperform** SigLIP in local but significantly **underperform** SigLIP on test:
 1. CLIP-ViT uses softmax as loss. It's learning objective is given **multiple** captions and classifiy them. This means while the model CAN, it does not learn fully the features useful for a single-caption task, which is what is test and not val.
@@ -218,6 +218,7 @@ test set:
 - Accuracy: 0.897
 - Score: 0.757444107037037
 
+Siglip epoch 10v3 is overfitted
 
 #### YOLOv6l6 augsv3 epoch29 blind + epoch 35 blind conf=0.5 iou=0.5 WBF 0.3 + siglip-so400m epoch5_merged
 SO400m but trained on merged XS data
@@ -226,6 +227,7 @@ test set:
 - Accuracy: 0.902
 - Speed Score: 0.6077701553703703
 
+Still worse than large
 
 ### Evaluation (only covers during qualifiers)
 

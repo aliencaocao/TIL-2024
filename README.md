@@ -22,10 +22,10 @@ ASR task is to convert radio-distorted and noisy audio into text. NLP task is to
 Unfortunately our model may have overfitted to leaderboard hidden test set in Finals, resulting in a lower ranking.
 
 ## Final evaluation results on leaderboard
-| Task | Model                                                 | Accuracy Score     |
-|------|-------------------------------------------------------|--------------------|
-| ASR  | Whisper Medium                                        | 0.9956923723471317 |
-| NLP  | gorilla-openfunctions-v2                              | 0.99933333         |
+| Task | Model                                                  | Accuracy Score     |
+|------|--------------------------------------------------------|--------------------|
+| ASR  | Whisper Medium                                         | 0.9956923723471317 |
+| NLP  | gorilla-openfunctions-v2                               | 0.99933333         |
 | VLM  | YOLOv6-L6 + RealESRGAN-x4v3 + SigLIP-large-patch16-384 | 0.913              |
 
 We do not report speed score here as it is not optimal in leaderboard submission since we employed hardware-specific optimizations. More details will be below.
@@ -83,11 +83,7 @@ Parakeet RNNT 0.6B gave a much worse leaderboard score despite a ~10x lower vali
 More evaluation results can be found [here](asr/README.md).
 
 ### Training
-
-Training was conducted locally on our own machines, namely 
-
 Hyperparameters:
-
 * Learning Rate: 1e-5
 * warmup: 500 steps
 * epochs: 30
@@ -177,6 +173,7 @@ Inference code can be found in [NLPManager.py](nlp/src/NLPManager.py).
 
 
 ## VLM
+### Overview
 This task is on using description of a flying object to locate it in an image. We tried multiple approaches:
 * MM-Grounding-DINO: trained model giving 0.509 map (we got scammed)
 * Co-Det: 0.61 map zero-shot but too slow to train
@@ -195,7 +192,8 @@ This task is on using description of a flying object to locate it in an image. W
 Details can be found [here](vlm/README.md)
 
 We only document in detail the multi-stage approach that we used eventually here.
-### Overview
+
+Our pipeline:
 1. YOLOv6-L6 trained on single-class detection of targets in general, using synthetic data too
 2. Extract the bboxes as detected by YOLO, optionally using SAHI (Slicing Aided Hyper Inference). SAHI helped for v9e but not v6l6.
 3. Run each extracted bbox through Real-ESRGAN x4v3 model to upscale 4x
@@ -277,19 +275,30 @@ Effect of upscaling:
 
 ![img.png](img.png)
 
+Interestingly, upscaling has always been worse on local clean validations set, likely due to the image not being noisy and the upscaling artifacts are not learned by the model trained on non-upscaled data.
+
 More evaluation results and analysis on different models can be found [here](vlm/multistage/README.md).
+
+# SigLIP
+We extensively compared OpenAI CLIPs, LAION CLIPs, EVA-CLIPs, Metaclips and Google SigLIPs, SigLIP clearly stands out as the winner as:
+* SigLIP is trained on sigmoid loss which operates on only 1 pair of image-text labels, compared to normal CLIPs trained on softmax which learns 1-to-many best
+* This ensures its learnt representations are best suited for 1-to-1 similarity scoring
+* Normal CLIPs fails at 1-to-1 as softmax will normalize score to 1.0. This heavily affects its representation quality for this task (after removal of softmax function to get raw logits)
+* Zero shot ImageNet performance is worth considering but not strictly correlated to this task e.g. CLIP-H-LAION2B underperform SigLIP zero-shot
+
+We tested both [google/siglip-large-patch16-384](https://huggingface.co/google/siglip-large-patch16-384) and [google/siglip-so400m-patch14-384](https://huggingface.co/google/siglip-so400m-patch14-384). Before training on upscaled data, so400m performed better likely due to its higher parameter count and thus better generalization. However, after training on upscaled data, so400m tends to overfit early and consistently underperformed large. Training on upscaled data likely made the task a lot easier and large is less prone to overfitting thus ended up performing better.
 
 ### Training
 #### YOLOv9e
 * YOLOv9e trained on 640px input size with augmentations
 * Inferencing at 1600px improves score despite model trained at 640px
 * Continued training for ~10 epoches on 1600px improves further
+* A clear characteristic of small object detection tasks where input resolution matters greatly
 
 YOLOv9e training code can be found in [train.ipynb](vlm/multistage/yolov8/train.ipynb)
 
 #### YOLOv6-L6
-
-To launch YOLOv6-L6 training, run the following:
+To launch YOLOv6-L6 training (on 5 gpus), run the following:
 ```sh
 cd vlm/multistage/YOLOv6
 CUDA_VISIBLE_DEVICES=0,1,2,3,4 python -m torch.distributed.launch \
@@ -314,6 +323,8 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4 python -m torch.distributed.launch \
     --check-labels
 ```
 
+To improve compute efficiency, we used rectangular training by setting input to 1520x870, same as DSTA training data and test data. Note that it will be upscaled to 1536x896 due to it must be divisible by strides=32.
+
 #### SigLIP
 
 SigLIP training code can be found in [HF_train.py](vlm/multistage/siglip/HF_train.py)
@@ -327,21 +338,47 @@ Finals submission model is https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/ffkw
 
 ### Inference
 #### YOLOv9e
-* Test-time Augmentation improves score at cost of inference speed
-* SAHI (Slicing Aided Hyper Inference) improves significantly at large cost of speed: (0.896 → 0.905)
+* Test-time Augmentation improves score at cost of inference speed.
+* A lower confidence of 0.1 was used to prevent false positives. This gave the best result on leaderboard.
+* SAHI (Slicing Aided Hyper Inference) improves significantly at large cost of speed: (0.896 → 0.905), however must be paired with higher confidence score (0.1 vs 0.5), else, it is a lot worse than without SAHI, likely due to way too many FP within each slice.
+* Weighted Box Fusion (WBF) did not improve score.
 
 #### Slicing Aided Hyper Inference (SAHI)
 We modified the original [SAHI](https://github.com/obss/sahi) to:
 1. Add support for batched inference on slices to greatly speedup inference
-2. Add support for TensorRT for Ultralytics-based/originally YOLOv8 models (exported using Ultralytics)
+2. Add support for TensorRT for Ultralytics-based/so-called YOLOv8 models (exported using Ultralytics)
 3. Add support for YOLOv6 (requires yolov6 repo on sys.path)
 
 Our modified fork is [here](https://github.com/aliencaocao/sahi).
 
 #### YOLOv6l6
+* Did not use SAHI as it degraded score marginally, likely due to us reaching the limit of yolov6l6.
+* Weighted Box Fusion (WBF) between 2 YOLOv6l6 models improved score from 0.911 to 0.913 but did not get used in finals (in hindsight, should very much have!)
+* Converted model to use Nvidia TensorRT in FP16 on a RTX 4070Ti Super (same as finals) with fixed batch size (1) and input shape (1536x896) for maximum speed. Conversion script with profiling code is [here](vlm/multistage/YOLOv6/tensorrt inference.py). It uses `torch2trt`. Using fixed input shape allows TRT to apply the most aggressive optimizations.
 
 #### Real-ESRGAN-x4v3
+Real-ESRGAN models does a pre-pad to images before upscaling to avoid border artifacts. The default value is 10 for the x4v3 model but it cannot be used on images with less than 10px on either side. 10px is better than 1px pre padding (0.892 vs 0.887).
+
+Originally we ignored these smaller images, but evaluations showed that having a conditional padding where pre-pad=1px for these images is still beneficial (0.892 vs 0.894). We generated the training data for SigLIP using the same way.
 
 #### SigLIP
+We converted model to use Nvidia TensorRT in FP16 on a RTX 4070Ti Super (same as finals). Conversion script is [here](vlm/multistage/siglip/export to tensorrt.py), also using `torch2trt`.
 
-Time taken to process 1 sample at bs=1: 0.15s. Without TensorRT acceleration, it takes 1.8s.
+We split the model into text and vision encoders and converted them separately for maximum performance.
+
+Image encoder:
+* dynamic batch size (min1, optimal 10, max 20)
+* fixed input shape (384x384)
+
+Text encoder:
+* fixed batch size (1)
+* fixed input length (64) as all SigLIP models are trained with input texts padded to 64 tokens.
+
+Then we calculate the image-text similarity using dot product on normalized embeddings since it is cheaper but functionally equal to cosine-similarity. We also omit the sigmoid activation as it is not needed for image reranking task like this.
+
+For our entire pipeline, the end2end time taken to process 1 sample at bs=1 is 0.15s. Without TensorRT acceleration, it takes 1.8s.
+
+### Hardware used
+We thank our [generous senior](https://github.com/152334H) as most of our models are trained on a 5xRTX 3090 node owned by him.
+
+We also made use of Kaggle's free 2xT4 and TPUv4-8 pod for training.
