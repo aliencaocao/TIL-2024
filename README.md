@@ -64,17 +64,19 @@ Change the speed or duration of the signal without changing the pitch. We decide
 
 Attenuates the low and high frequencies of an audio clip, which can help to simulate radio transmission which only allows certain frequencies to be broadcasted.
 
+"niner" is a special token that only exists in this competition's data due to the convention of radio transmission. We tried adding it as an extra token to the tokenizer. There are marginal gains but it introduced issues for faster-whisper deployment so we did not pursue.
+
 ### Model
 
-| Model                 | Train Set                | Leaderboard Score |
-|-----------------------|--------------------------|-------------------|
-| Whisper Small         | DSTA set                 | 0.9935            |
-| Whisper Small         | DSTA set (Augs)          | 0.9940            |
-| Whisper Small         | DSTA set + XS set        | 0.9922            |
-| Whisper Small (niner) | DSTA set + XS set        | 0.9926            |
-| Whisper Medium        | DSTA set (Augs)          | 0.9957            |
-| Parakeet RNNT 0.6B    | DSTA set (Augs)          | 0.9687            |
-| Parakeet RNNT 0.6B    | DSTA set + XS set (Augs) | 0.9893            |
+| Model                 | Train Set                  | Leaderboard Score |
+|-----------------------|----------------------------|-------------------|
+| Whisper Small         | DSTA set                   | 0.9935            |
+| Whisper Small         | DSTA set (Augs)            | 0.9940            |
+| Whisper Small         | DSTA set + denoised        | 0.9922            |
+| Whisper Small (niner) | DSTA set + denoised        | 0.9926            |
+| Whisper Medium        | DSTA set (Augs)            | 0.9957            |
+| Parakeet RNNT 0.6B    | DSTA set (Augs)            | 0.9687            |
+| Parakeet RNNT 0.6B    | DSTA set + denoised (Augs) | 0.9893            |
 
 Parakeet RNNT 0.6B gave a much worse leaderboard score despite a ~10x lower validation word error rate during training. Perhaps, Whisper has supreme robustness due to being trained on 680k hours of labelled data versus Parakeet's 64k hours.
 
@@ -250,14 +252,40 @@ T = [
 ```
 This is V2 of the augmentations. Evaluation of V1 can be found [here](vlm/multistage/README.md).
 
-### Model
+### Synthetic Data
+We generated synthetic data for VLM task by cropping and pasting flying objects from online onto random images, and resizing them and add augmentations.
 
-More evaluation results and analysis can be found [here](vlm/multistage/README.md).
+Our synthetic data consists of 2338 images, 9214 bboxes, 69 unique objects.
+
+Code for generating the dataset can be found [here](vlm/create_and_augment_new_data.ipynb)
+
+Sample:
+
+![img_1.png](img_1.png)
+
+
+### Models
+#### Object Detectors
+We initially used [YOLOv9e](https://docs.ultralytics.com/models/yolov9/) for qualifiers, then switched to [YOLOv6l6](https://github.com/meituan/YOLOv6) as we find it perform better both on our synthetic data and leaderboard, while being 3x faster to train and 2x faster to infer. It also converges with 2x less epoch (~30 VS ~70 on V9e).
+
+Best leaderboard score for YOLOv9e is 0.905 with SAHI and TTA (slow). Best leaderboard score for YOLOv6l6 is 0.911 for single-model, 0.913 for 2x YOLOv6l6 WBF, but both without SAHI/TTA. In finals, we used single model in favour of speed.
+
+#### Upscalers
+We used [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) x4v3 for upscaling. It is a very lightweight model at 6.2MB. While larger models like RealESRNet_x4plus are better, they are too slow to run inference, since the model cannot be batched without padding (which severely hurts its quality). In local evaluations, the lightweight version performed just as well.
+
+Effect of upscaling:
+
+![img.png](img.png)
+
+More evaluation results and analysis on different models can be found [here](vlm/multistage/README.md).
 
 ### Training
-#### YOLOv8
+#### YOLOv9e
+* YOLOv9e trained on 640px input size with augmentations
+* Inferencing at 1600px improves score despite model trained at 640px
+* Continued training for ~10 epoches on 1600px improves further
 
-YOLOv8 training code can be found in [train.ipynb](vlm/multistage/yolov8/train.ipynb)
+YOLOv9e training code can be found in [train.ipynb](vlm/multistage/yolov8/train.ipynb)
 
 #### YOLOv6-L6
 
@@ -298,4 +326,22 @@ Finals submission model is https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/ffkw
 
 
 ### Inference
-Time taken to process 1 sample at bs=1: 0.15s. Without TensorRT acceleration, it is 1.8s.
+#### YOLOv9e
+* Test-time Augmentation improves score at cost of inference speed
+* SAHI (Slicing Aided Hyper Inference) improves significantly at large cost of speed: (0.896 → 0.905)
+
+#### Slicing Aided Hyper Inference (SAHI)
+We modified the original [SAHI](https://github.com/obss/sahi) to:
+1. Add support for batched inference on slices to greatly speedup inference
+2. Add support for TensorRT for Ultralytics-based/originally YOLOv8 models (exported using Ultralytics)
+3. Add support for YOLOv6 (requires yolov6 repo on sys.path)
+
+Our modified fork is [here](https://github.com/aliencaocao/sahi).
+
+#### YOLOv6l6
+
+#### Real-ESRGAN-x4v3
+
+#### SigLIP
+
+Time taken to process 1 sample at bs=1: 0.15s. Without TensorRT acceleration, it takes 1.8s.
