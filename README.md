@@ -26,7 +26,7 @@ Unfortunately our model may have overfitted to leaderboard hidden test set in Fi
 |------|-------------------------------------------------------|--------------------|
 | ASR  | Whisper Medium                                        | 0.9956923723471317 |
 | NLP  | gorilla-openfunctions-v2                              | 0.99933333         |
-| VLM  | YOLOv6l6 + RealESRGAN-x4v3 + SigLIP-large-patch16-384 | 0.913              |
+| VLM  | YOLOv6-L6 + RealESRGAN-x4v3 + SigLIP-large-patch16-384 | 0.913              |
 
 We do not report speed score here as it is not optimal in leaderboard submission since we employed hardware-specific optimizations. More details will be below.
 
@@ -194,15 +194,20 @@ Details can be found [here](vlm/README.md)
 
 We only document in detail the multi-stage approach that we used eventually here.
 ### Overview
-1. YOLOv6l6 trained on single-class detection of targets in general, using synthetic data too
+1. YOLOv6-L6 trained on single-class detection of targets in general, using synthetic data too
 2. Extract the bboxes as detected by YOLO, optionally using SAHI (Slicing Aided Hyper Inference). SAHI helped for v9e but not v6l6.
 3. Run each extracted bbox through Real-ESRGAN x4v3 model to upscale 4x
 4. Feed each bbox into a SigLIP and get similarity score VS caption (1/image)
 5. Choose the box with the highest similarity score for each caption
 
+#### Note on SAHI
+SAHI slices our 870x1520 image into 6 870x760 slices. Initially we hypothesised that YOLOv6, having been fine-tuned only on 870x1520 images, may have been ill-suited for inference on sliced images of the new size. As such, we fine-tuned a second YOLOv6-L6 on randomly chosen 870x760 slices of each input image. However, this did not improve performance.
+
+YOLOv6 sliced training may be enabled by setting `self.sahi_random_crop = True` [here](vlm/train/YOLOv6/YOLOv6/yolov6/data/datasets.py#L128).
+
 ### Data Augmentation
 #### YOLO
-We used the following augmentations for YOLOv9e and YOLOv6l6 training:
+We used the following augmentations for YOLOv9e and YOLOv6-L6 training:
 ```python
 T = [
     A.GaussNoise(var_limit=2500, p=0.5),
@@ -221,7 +226,7 @@ This is V3 of the augmentations. Evaluation of previous 2 versions can be found 
 
 Note for YOLOv9e, we had to modify the [source](https://github.com/ultralytics/ultralytics/blob/c8514a6754d22a331e600ea9236340d40477b8a5/ultralytics/data/augment.py#L928) of Ultralytics directly to modify its augmentations.
 
-Augmentations for YOLOv6 are defined in [this file](vlm/train/YOLOv6/YOLOv6/yolov6/data/datasets.py).
+Augmentations for YOLOv6 are defined [here](vlm/train/YOLOv6/YOLOv6/yolov6/data/datasets.py#L116).
 
 #### SigLIP
 We used the following augmentations for SigLIP training:
@@ -254,9 +259,9 @@ More evaluation results and analysis can be found [here](vlm/multistage/README.m
 
 YOLOv8 training code can be found in [train.ipynb](vlm/multistage/yolov8/train.ipynb)
 
-#### YOLOv6l6
+#### YOLOv6-L6
 
-To launch YOLOv6l6 training, run the following:
+To launch YOLOv6-L6 training, run the following:
 ```sh
 cd vlm/multistage/YOLOv6
 CUDA_VISIBLE_DEVICES=0,1,2,3,4 python -m torch.distributed.launch \
