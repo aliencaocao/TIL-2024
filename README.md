@@ -145,6 +145,8 @@ We then fine-tuned the model using [Unsloth](https://github.com/unslothai/unslot
 
 Training code can be found in [train.ipynb](nlp/src/train.ipynb).
 
+Model weight: https://huggingface.co/aliencaocao/gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2
+
 ### Inference
 LLMs may seem extreme for this task for its sheer size and inference cost, but it CAN be deployed efficiently with inference costs matchihng smaller models like BERT.
 
@@ -249,6 +251,8 @@ Sample:
 
 ![img_1.png](img_1.png)
 
+Full dataset is open sourced: https://huggingface.co/datasets/aliencaocao/described-flying-objects
+
 
 ### Models
 #### Object Detectors
@@ -267,7 +271,7 @@ Interestingly, upscaling has always been worse on local clean validations set, l
 
 More evaluation results and analysis on different models can be found [here](vlm/multistage/README.md).
 
-# SigLIP
+#### SigLIP
 We extensively compared OpenAI CLIPs, LAION CLIPs, EVA-CLIPs, Metaclips and Google SigLIPs, SigLIP clearly stands out as the winner as:
 * SigLIP is trained on sigmoid loss which operates on only 1 pair of image-text labels, compared to normal CLIPs trained on softmax which learns 1-to-many best
 * This ensures its learnt representations are best suited for 1-to-1 similarity scoring
@@ -330,9 +334,9 @@ We used Weights & Biases for logging as each training run was done remotely on a
 
 SigLIP training logs on Weights & Biases: https://wandb.ai/aliencaocao/TIL2024-SigLIP
 
-Semi-finals submission model is https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/3c00nigo which is resumed from https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/os657bxe
+Qualifiers and semi-finals submission model is https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/3c00nigo which is resumed from https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/os657bxe. This is trained for 5epochs then continued for another 5 epochs (effectively 2 cycles of cosine annealing schedule) on full DSTA data. It scored 0.905 with YOLOv9e w/ SAHI and 0.91 with 2xYOLOv6l6 WBF. Weights: https://huggingface.co/aliencaocao/siglip-large-epoch5-augv2-upscale_0.892_cont_5ep_0.905-TIL24
 
-Finals submission/best score model is https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/ffkw9nka
+Finals submission/best score model is https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/ffkw9nka. This is trained for 5 epochs only on DSTA + synthetic data. This was used for finals. It scored our best score 0.913 with YOLOv6l6, compared to 0.91 on the other model. Weights: https://huggingface.co/aliencaocao/siglip-large-epoch5v3_merged-TIL24
 
 Due to a [bug](https://github.com/huggingface/transformers/issues/31034) with HuggingFace Accelerate/FDSP, we had to save the checkpoint only once and thus set `save_steps` to 0.999.
 
