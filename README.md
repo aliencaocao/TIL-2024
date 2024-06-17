@@ -195,7 +195,7 @@ Details can be found [here](vlm/README.md)
 We only document in detail the multi-stage approach that we used eventually here.
 ### Overview
 1. YOLOv6l6 trained on single-class detection of targets in general, using synthetic data too
-2. Extract the bboxes as detected by YOLO, optionally using SAHI (Slicing Aided Hyper Inference), helped for v9e but not v6l6
+2. Extract the bboxes as detected by YOLO, optionally using SAHI (Slicing Aided Hyper Inference). SAHI helped for v9e but not v6l6.
 3. Run each extracted bbox through Real-ESRGAN x4v3 model to upscale 4x
 4. Feed each bbox into a SigLIP and get similarity score VS caption (1/image)
 5. Choose the box with the highest similarity score for each caption
@@ -221,7 +221,7 @@ This is V3 of the augmentations. Evaluation of previous 2 versions can be found 
 
 Note for YOLOv9e, we had to modify the [source](https://github.com/ultralytics/ultralytics/blob/c8514a6754d22a331e600ea9236340d40477b8a5/ultralytics/data/augment.py#L928) of Ultralytics directly to modify its augmentations.
 
-TODO: @wingyip fill for yolov6l6 on how augs are defined, add the config files in repo
+Augmentations for YOLOv6 are defined in [this file](vlm/train/YOLOv6/YOLOv6/yolov6/data/datasets.py).
 
 #### SigLIP
 We used the following augmentations for SigLIP training:
