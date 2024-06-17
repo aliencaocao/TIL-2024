@@ -19,7 +19,7 @@ ASR task is to convert radio-distorted and noisy audio into text. NLP task is to
 * 2nd in Semi-finals
 * 7th in Finals
 
-Unfortunately our model may have overfitted to leaderboard hidden test set in Finals, resulting in a lower ranking.
+We hypothesise that our poor Finals performance was because we overfitted our VLM to the Qualifiers test set - i.e. we chose our checkpoints and made optimisations based almost solely on Qualifiers performance. It is likely that beyond some lower bound, increases in accuracy - even validation/test accuracy - become unrepresentative of model performance and robustness in the wild. (This was observed during our training process for the SOLIDER-REID modelin TIL 2023.)
 
 ## Final evaluation results on leaderboard
 | Task | Model                                                  | Accuracy Score     |
@@ -98,7 +98,7 @@ Training code can be found in [WhisperSmallAndMed.ipynb](asr/whisper-src/Whisper
 ### Inference
 To speed up inference using whisper models, we decided to use [`faster-whisper`](https://github.com/SYSTRAN/faster-whisper), which utilises the ctranslate2, a fast inference engine for Transformer models, to increase the inference speeds by more than 2x.
 
-We also tried applying loudness normalisation to the audio clips before inference to increase accuracy score, and this was done using the [`pyloudnorm`](https://github.com/csteinmetz1/pyloudnorm) library. However, this loudness normalisation seemed to have no noticeable effect on our scores, but significantly slowed down model inference. This led us to conclude that our ASR models, namely whisper small and whisper medium, are already significantly robust to audio clips of varying loudness. This can also be seen in the physical competition where the raw whisper models were able to transcribe even the softess of clips in the advanced final round. 
+We also tried applying loudness normalisation to the audio clips before inference to increase accuracy score, and this was done using the [`pyloudnorm`](https://github.com/csteinmetz1/pyloudnorm) library. However, this loudness normalisation seemed to have no noticeable effect on our scores, but significantly slowed down model inference. This led us to conclude that our ASR models, namely Whisper-Small and -Medium, are already significantly robust to audio clips of varying loudness. This can also be seen in the physical competition where the raw whisper models were able to transcribe even the softest of clips in the advanced final round. 
 
 We also tried denoising the data prior to inference as another attempt to raise our accuracy from the whisper model. However, we noticed early on that denoising the audio clips on inference was doing a disservice to the whisper model. Denoising on inference caused our accuracy to take a hit, while the performance tanked due to the time required to process every input. This is also likely due to whisper being trained on 680k audio clips and being robust to noise. It is also possible that denoising the clips, introduced audio artifacting in some clips and causing inferences to fail.
 
@@ -139,6 +139,7 @@ More evaluation results can be found [here](nlp/README.md).
 
 ### Training
 We then fine-tuned the model using [Unsloth](https://github.com/unslothai/unsloth). Training took 34 minutes on Colab's free T4 GPU. We used [Rank-Stabilized](https://arxiv.org/abs/2312.03732) [LoRA (Low-Rank Adaptation of Large Language Models)](https://arxiv.org/abs/2106.09685).
+
 #### Hyperparameters:
 * LoRA rank: 16
 * LoRA alpha: 16
@@ -179,7 +180,7 @@ This task is on using description of a flying object to locate it in an image. W
 * Co-Det: 0.61 map zero-shot but too slow to train
 * OWLv2-large-ensemble: 0.629 map zero-shot BUT training on both own-implemented PyTorch code and Google’s Official JAX code lead to loss explosion
 * A few that inference could not run / already very bad on training data
-  * APE (RAM OOM)
+  * APE - works on author's [HF space](https://huggingface.co/spaces/shenyunhang/APE_demo), but somehow triggered a severe memory leak on GCP that filled all of CPU RAM
   * UNINEXT
   * ONE-PEACE
   * OFA
@@ -199,11 +200,6 @@ Our pipeline:
 3. Run each extracted bbox through Real-ESRGAN x4v3 model to upscale 4x
 4. Feed each bbox into a SigLIP and get similarity score VS caption (1/image)
 5. Choose the box with the highest similarity score for each caption
-
-#### Note on SAHI
-SAHI slices our 870x1520 image into 6 870x760 slices. Initially we hypothesised that YOLOv6, having been fine-tuned only on 870x1520 images, may have been ill-suited for inference on sliced images of the new size. As such, we fine-tuned a second YOLOv6-L6 on randomly chosen 870x760 slices of each input image. However, this did not improve performance.
-
-YOLOv6 sliced training may be enabled by setting `self.sahi_random_crop = True` [here](vlm/train/YOLOv6/YOLOv6/yolov6/data/datasets.py#L128).
 
 ### Data Augmentation
 #### YOLO
@@ -327,7 +323,7 @@ To improve compute efficiency, we used rectangular training by setting input to 
 
 #### SigLIP
 
-SigLIP training code can be found in [HF_train.py](vlm/multistage/siglip/HF_train.py)
+SigLIP training code can be found in [HF_train.py](vlm/multistage/siglip/HF_train.py).
 
 SigLIP training logs on Weights & Biases: https://wandb.ai/aliencaocao/TIL2024-SigLIP
 
@@ -347,14 +343,17 @@ Finals submission model is https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/ffkw
 We modified the original [SAHI](https://github.com/obss/sahi) to:
 1. Add support for batched inference on slices to greatly speedup inference
 2. Add support for TensorRT for Ultralytics-based/so-called YOLOv8 models (exported using Ultralytics)
-3. Add support for YOLOv6 (requires yolov6 repo on sys.path)
+3. Add support for YOLOv6 (requires yolov6 repo on `sys.path`)
 
 Our modified fork is [here](https://github.com/aliencaocao/sahi).
 
 #### YOLOv6l6
 * Did not use SAHI as it degraded score marginally, likely due to us reaching the limit of yolov6l6.
+    * We initially hypothesised that YOLOv6, having been fine-tuned on 1520x870 images, was unable to generalise to the 760x870 slices output by SAHI. As such, we fine-tuned a new YOLOv6 on randomly selected 760x870 patches of the input images, and tried using this new model for sliced inference. However, this did not improve performance on the qualifiers test data.
+    * YOLOv6 sliced training may be enabled by setting `self.sahi_random_crop = True` [here](vlm/train/YOLOv6/YOLOv6/yolov6/data/datasets.py#L128).
+
 * Weighted Box Fusion (WBF) between 2 YOLOv6l6 models improved score from 0.911 to 0.913 but did not get used in finals (in hindsight, should very much have!)
-* Converted model to use Nvidia TensorRT in FP16 on a RTX 4070Ti Super (same as finals) with fixed batch size (1) and input shape (1536x896) for maximum speed. Conversion script with profiling code is [here](vlm/multistage/YOLOv6/tensorrt inference.py). It uses `torch2trt`. Using fixed input shape allows TRT to apply the most aggressive optimizations.
+* Converted model to use Nvidia TensorRT in FP16 on a RTX 4070Ti Super (same as finals) with fixed batch size (1) and input shape (1536x896) for maximum speed. Conversion script with profiling code is [here](<vlm/multistage/YOLOv6/tensorrt inference.py>). It uses `torch2trt`. Using fixed input shape allows TRT to apply the most aggressive optimizations.
 
 #### Real-ESRGAN-x4v3
 Real-ESRGAN models does a pre-pad to images before upscaling to avoid border artifacts. The default value is 10 for the x4v3 model but it cannot be used on images with less than 10px on either side. 10px is better than 1px pre padding (0.892 vs 0.887).
@@ -362,7 +361,7 @@ Real-ESRGAN models does a pre-pad to images before upscaling to avoid border art
 Originally we ignored these smaller images, but evaluations showed that having a conditional padding where pre-pad=1px for these images is still beneficial (0.892 vs 0.894). We generated the training data for SigLIP using the same way.
 
 #### SigLIP
-We converted model to use Nvidia TensorRT in FP16 on a RTX 4070Ti Super (same as finals). Conversion script is [here](vlm/multistage/siglip/export to tensorrt.py), also using `torch2trt`.
+We converted model to use Nvidia TensorRT in FP16 on a RTX 4070Ti Super (same as finals). Conversion script is [here](<vlm/multistage/siglip/export to tensorrt.py>), also using `torch2trt`.
 
 We split the model into text and vision encoders and converted them separately for maximum performance.
 
