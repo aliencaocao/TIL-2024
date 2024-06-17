@@ -78,6 +78,8 @@ Attenuates the low and high frequencies of an audio clip, which can help to simu
 
 Parakeet RNNT 0.6B gave a much worse leaderboard score despite a ~10x lower validation word error rate during training. Perhaps, Whisper has supreme robustness due to being trained on 680k hours of labelled data versus Parakeet's 64k hours.
 
+More evaluation results can be found [here](asr/README.md).
+
 ### Training
 
 Training was conducted locally on our own machines, namely 
@@ -92,6 +94,8 @@ Hyperparameters:
 * warmup_ratio: 0.22
 * weight_decay: 1e-4
 
+Training code can be found in [WhisperSmallAndMed.ipynb](asr/whisper-src/WhisperSmallAndMed.ipynb).
+
 
 ### Inference
 To speed up inference using whisper models, we decided to use [`faster-whisper`](https://github.com/SYSTRAN/faster-whisper), which utilises the ctranslate2, a fast inference engine for Transformer models, to increase the inference speeds by more than 2x.
@@ -99,6 +103,8 @@ To speed up inference using whisper models, we decided to use [`faster-whisper`]
 We also tried applying loudness normalisation to the audio clips before inference to increase accuracy score, and this was done using the [`pyloudnorm`](https://github.com/csteinmetz1/pyloudnorm) library. However, this loudness normalisation seemed to have no noticeable effect on our scores, but significantly slowed down model inference. This led us to conclude that our ASR models, namely whisper small and whisper medium, are already significantly robust to audio clips of varying loudness. This can also be seen in the physical competition where the raw whisper models were able to transcribe even the softess of clips in the advanced final round. 
 
 We also tried denoising the data prior to inference as another attempt to raise our accuracy from the whisper model. However, we noticed early on that denoising the audio clips on inference was doing a disservice to the whisper model. Denoising on inference caused our accuracy to take a hit, while the performance tanked due to the time required to process every input. This is also likely due to whisper being trained on 680k audio clips and being robust to noise. It is also possible that denoising the clips, introduced audio artifacting in some clips and causing inferences to fail.
+
+Inference code can be found in [ASRManager.py](asr/whisper-src/src/ASRManager.py).
 
 ## NLP
 The task is to convert instructions on operating a turret into structured data with the following fields: heading (a 3-digit number), tool (the weapon to use), target (description of the target's color and type).
@@ -130,6 +136,8 @@ To further reduce inference time, simple regex-based rules were used:
 [Gorilla-OpenFunctions-v2](https://gorilla.cs.berkeley.edu/blogs/7_open_functions_v2.html) by UC Berkely, SOTA open-source model on [Berkeley Function-Calling Leaderboard](https://gorilla.cs.berkeley.edu/leaderboard.html), fine-tuned from LLaMA2-7B.
 
 Using the above data transformations, the pretrained model scored 0.9978597402597402 on leaderboard.
+
+More evaluation results can be found [here](nlp/README.md).
 
 ### Training
 We then fine-tuned the model using [Unsloth](https://github.com/unslothai/unsloth). Training took 34 minutes on Colab's free T4 GPU. We used [Rank-Stabilized](https://arxiv.org/abs/2312.03732) [LoRA (Low-Rank Adaptation of Large Language Models)](https://arxiv.org/abs/2106.09685).
@@ -171,6 +179,50 @@ Inference code can be found in [NLPManager.py](nlp/src/NLPManager.py).
 
 ### Model
 
+More multistage approach evaluation results can be found [here](vlm/multistage/README.md).
+
 ### Training
+#### YOLOv8
+
+YOLOv8 training code can be found in [train.ipynb](vlm/multistage/yolov8/train.ipynb)
+
+#### YOLOv6l6
+
+To launch YOLOv6l6 training, run the following:
+```sh
+cd vlm/multistage/YOLOv6
+CUDA_VISIBLE_DEVICES=0,1,2,3,4 python -m torch.distributed.launch \
+    --nproc_per_node 5 \
+    --master_port 27322 \
+    tools/train.py \
+    --batch-size 52 \
+    --bs_per_gpu 16 \
+    --conf-file configs/yolov6l6_finetune.py \
+    --data-path data/dataset.yaml \
+    --specific-shape \
+    --height 870 \
+    --width 1520 \
+    --epochs 200 \
+    --eval-final-only \
+    --save_ckpt_on_last_n_epoch 200 \
+    --output-dir runs/train \
+    --name bs52_effbs64_dsta+xs_expanded \
+    --device 0,1,2,3,4 \
+    --workers 32 \
+    --check-images \
+    --check-labels
+```
+
+#### SigLIP
+
+SigLIP training code can be found in [HF_train.py](vlm/multistage/siglip/HF_train.py)
+
+SigLIP training logs on Weights & Biases: https://wandb.ai/aliencaocao/TIL2024-SigLIP
+
+Semi-finals submission model is https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/3c00nigo which is resumed from https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/os657bxe
+
+Finals submission model is https://wandb.ai/aliencaocao/TIL2024-SigLIP/runs/ffkw9nka
+
 
 ### Inference
+Time taken to process 1 sample at bs=1: 0.15s. Without TensorRT acceleration, it is 1.8s.
