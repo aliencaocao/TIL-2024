@@ -126,6 +126,8 @@ Hyperparameters:
 
 Training code can be found in [WhisperSmallAndMed.ipynb](asr/whisper-src/WhisperSmallAndMed.ipynb).
 
+Best performing model weight and training log: https://huggingface.co/aliencaocao/whisper-medium.en-TIL24
+
 
 ### Inference
 To speed up inference using Whisper models, we used [`faster-whisper`](https://github.com/SYSTRAN/faster-whisper). It utilises `ctranslate2`, a fast inference engine for Transformer models, to increase inference speeds by more than 2x.
