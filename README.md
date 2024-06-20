@@ -77,7 +77,7 @@ We do not report speed score here. Due to our use of hardware-specific TensorRT 
 ## ASR
 ### Data Augmentation
 
-We tried introducing noise to the dataset, then training on the DSTA dataset with added noise combined with that without noise. However, the model trained on denoised data was not performing very well, with an unexpected noticeable dip in accuracy. Hence, we scrapped the idea of training on denoised data.
+We tried denoising the given data, then training on the original noisy dataset combined with denoised data. However, the model ended up not performing very well, with an unexpected dip in accuracy. Hence, we scrapped the idea of training on denoised data.
 
 For ASR data augmentation, we used the `audiomentations` library. We note that `torch-audiomentations` is an alternative that performs augmentations on GPU for a speed boost. Nonetheless, its support for some augmentations is lacking as of June 2024, so we did not use it.
 
@@ -132,7 +132,7 @@ Best performing model weight and training log: https://huggingface.co/aliencaoca
 ### Inference
 To speed up inference using Whisper models, we used [`faster-whisper`](https://github.com/SYSTRAN/faster-whisper). It utilises `ctranslate2`, a fast inference engine for Transformer models, to increase inference speeds by more than 2x.
 
-We also tried applying loudness normalisation to the audio clips before inference to increase accuracy score, and this was done using the [`pyloudnorm`](https://github.com/csteinmetz1/pyloudnorm) library. However, this loudness normalisation seemed to have no noticeable effect on our scores, but significantly slowed down model inference. This led us to conclude that our ASR models, namely Whisper Small and Medium, are already significantly robust to audio clips of varying loudness. This can also be seen in the physical competition where the raw whisper models were able to transcribe even the softest of clips in the advanced final round. 
+We also tried applying loudness normalisation to the audio clips before inference to increase accuracy score, and this was done using the [`pyloudnorm`](https://github.com/csteinmetz1/pyloudnorm) library. However, this loudness normalisation seemed to have no noticeable effect on our scores, but significantly slowed down model inference. This led us to conclude that our ASR models, namely Whisper Small and Medium, are already significantly robust to audio clips of varying loudness. This can also be seen in the finals where the raw whisper models were able to transcribe even the softest of clips. 
 
 We also tried denoising the data prior to inference as another attempt to raise our accuracy from the whisper model. However, we noticed early on that denoising the audio clips on inference was doing a disservice to the whisper model. Denoising on inference caused our accuracy to take a hit, while the performance tanked due to the time required to process every input. This is also likely due to whisper being trained on 680k audio clips and being robust to noise. It is also possible that denoising the clips, introduced audio artifacting in some clips and causing inferences to fail.
 
@@ -147,16 +147,16 @@ System prompt: `Convert the given instruction to turret into a function call to 
 
 Function calling task require a function definition to be provided to the LLM, in JSON string and appended to the system prompt. After tuning by evaluating zero-shot on training data, ours is:
 ```json
-{'name': 'control_turret',
-'description': 'Control the turret by giving it heading, tool to use and target description',
-'parameters': {'type': 'object', 'properties': {'heading':
-{'type': 'string', 'description': 'Heading of target in three arabic numbers and multiples of five (005 to 360). Give None if not specified.'},
-'tool': {'type': 'string', 'description': 'Tool to use or deploy. Give None if not specified.'},
-'target': {'type': 'string', 'description': "Description of the target or enemy, exclude any quantifiers like 'the' or 'a'. It is a phrase that describe the appearance of the target like its color and type. Include ONLY the appearance and NOTHING else like its heading. Give None if not specified."}},
-'required': ['heading', 'tool', 'target']}}
+{"name": "control_turret",
+"description": "Control the turret by giving it heading, tool to use and target description",
+"parameters": {"type": "object", "properties": {"heading":
+{"type": "string", "description": "Heading of target in three arabic numbers and multiples of five (005 to 360). Give None if not specified."},
+"tool": {"type": "string", "description": "Tool to use or deploy. Give None if not specified."},
+"target": {"type": "string", "description": "Description of the target or enemy, exclude any quantifiers like 'the' or 'a'. It is a phrase that describe the appearance of the target like its color and type. Include ONLY the appearance and NOTHING else like its heading. Give None if not specified."}},
+"required": ["heading", "tool", "target"]}}
 ```
 
-As sometimes the command can contain reputations and model can be confused, we did the following:
+As sometimes the command can contain repetitions and model can be confused, we did the following:
 1. Check for “repeat” in text and attempt to extract information on first half, retry on full text if failed to extract all 3 fields. When retrying, omit the `Give None if not specified.` part of the prompt.
 2. Any matched tool will be included in prompt so model do not choose it again as target (e.g. missiles)
 
@@ -405,7 +405,7 @@ Due to a mysterious issue, we constantly CUDA OOMed when running validation, pos
 ### Inference
 #### YOLOv9e
 * Test-time Augmentation improves score at cost of inference speed.
-* A lower confidence of 0.1 was used to prevent false positives. This gave the best result on leaderboard.
+* A lower confidence of 0.1 was used to prevent false negatives. This gave the best result on leaderboard.
 * SAHI (Slicing Aided Hyper Inference) improves significantly at large cost of speed: (0.896 → 0.905), however must be paired with higher confidence score (0.1 vs 0.5), else, it is a lot worse than without SAHI, likely due to way too many FP within each slice.
 * Weighted Box Fusion (WBF) did not improve score.
 
