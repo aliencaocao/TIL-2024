@@ -63,7 +63,7 @@ The three tasks were chained in the Finals to drive a DJI Robomaster's turret in
 * 2nd in Semi-finals
 * 7th in Finals
 
-We hypothesise that our poor Finals performance was because we overfitted our VLM to the Qualifiers test set - i.e. we chose our checkpoints and made optimisations based almost solely on Qualifiers performance. It is likely that beyond some lower bound, increases in accuracy - even validation/test accuracy - become unrepresentative of model performance and robustness in the wild. (This was observed during our training process for the SOLIDER-REID modelin TIL 2023.)
+We hypothesise that our poor Finals performance was because we overfitted our VLM to the Qualifiers test set - i.e. we chose our checkpoints and made optimisations based almost solely on Qualifiers performance. It is likely that beyond some lower bound, increases in accuracy - even validation/test accuracy - become unrepresentative of model performance and robustness in the wild. (This was observed during our training process for the SOLIDER-REID model in TIL 2023.)
 
 ## Final evaluation results
 | Task | Model | Accuracy score |
@@ -190,7 +190,7 @@ Training code can be found in [train.ipynb](nlp/src/train.ipynb).
 Model weight: https://huggingface.co/aliencaocao/gorilla-openfunctions-v2-TIL24-r16-a16-ctx768-v2
 
 ### Inference
-LLMs may seem extreme for this task for its sheer size and inference cost, but it CAN be deployed efficiently with inference costs matchihng smaller models like BERT.
+LLMs may seem extreme for this task for its sheer size and inference cost, but it CAN be deployed efficiently with inference costs matching smaller models like BERT.
 
 We used [ExLlamaV2](https://github.com/turboderp/exllamav2) quantization and inference engine. It was chosen because it does all matrix ops in FP16 which Tesla T4 GPU in submission runtime excels at. It is also specifically optimized for consumer Nvidia GPU which is used in the Finals (RTX 4070Ti Super).
 
